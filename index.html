@@ -592,6 +592,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- ══════════════ ARSIP BARANG ══════════════ -->
+<div class="screen" id="screen-arsip">
+  <div class="content">
+    <div class="card" style="padding:12px 14px">
+      <div style="font-size:13px;color:var(--text2);line-height:1.6">
+        Barang yang diarsipkan disembunyikan dari operasional harian. Semua riwayat transaksi, batch FIFO, dan laporan tetap utuh. Pulihkan kapan saja.
+      </div>
+    </div>
+    <div id="arsipList"><div class="empty"><i class="ti ti-archive"></i>Tidak ada barang yang diarsipkan</div></div>
+  </div>
+</div>
+
 <!-- ══════════════ NOTIFIKASI ══════════════ -->
 <div class="screen" id="screen-notif">
   <div class="content">
@@ -622,6 +634,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('opname')"><i class="ti ti-clipboard-check"></i>Stock Opname</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('restock')"><i class="ti ti-shield-check"></i>Jagoan Warung</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('laporan')"><i class="ti ti-file-spreadsheet"></i>Laporan & Export</button>
+    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('arsip')"><i class="ti ti-archive"></i>Arsip Barang</button>
     <button class="btn" onclick="closeOverlay('moreMenu');openProfil()"><i class="ti ti-user-circle"></i>Profil Warung</button>
   </div>
 </div>
@@ -988,11 +1001,11 @@ function stockAccuracy(){
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
-const secondaryScreens = ['kerugian','opname','restock','notif','laporan'];
+const secondaryScreens = ['kerugian','opname','restock','notif','laporan','arsip'];
 const screenLabel = {
   dashboard:'Asisten Pintar Warung', barang:'Master Barang', pos:'Jual Barang',
   belanja:'Belanja Barang', kerugian:'Catat Kerugian', opname:'Stock Opname',
-  restock:'Jagoan Warung', notif:'Notifikasi', laporan:'Laporan & Export',
+  restock:'Jagoan Warung', notif:'Notifikasi', laporan:'Laporan & Export', arsip:'Arsip Barang',
 };
 
 function goScreen(s){
@@ -1019,6 +1032,7 @@ function goScreen(s){
     restock: ()=>{ renderRestock(); loadAbcAnalysis(); },
     notif: renderNotif,
     laporan: initLaporan,
+    arsip: renderArsip,
   };
   if(renders[s]) renders[s]();
 }
@@ -1367,7 +1381,7 @@ function openDetail(id){
     <div class="info-row"><span class="info-label">Batch aktif</span><span>${b.batches.length} batch</span></div>
     <div class="btn-row" style="margin-top:14px">
       <button class="btn sm" style="flex:1" onclick="editBarang('${b.id}')"><i class="ti ti-edit"></i>Edit</button>
-      <button class="btn sm danger" style="flex:1" onclick="hapusBarang('${b.id}')"><i class="ti ti-trash"></i>Hapus</button>
+      <button class="btn sm" style="flex:1;background:var(--amber-bg);border-color:var(--amber);color:var(--amber)" onclick="hapusBarang('${b.id}')"><i class="ti ti-archive"></i>Arsipkan</button>
     </div>`;
   openOverlay('modalDetail');
 }
@@ -1412,11 +1426,11 @@ function skuPick(nama,kat){
 }
 
 async function hapusBarang(id){
-  if(!confirm('Yakin hapus barang ini? Data batch & riwayat akan ikut terhapus.')) return;
-  const {error}=await sb.from('barang').delete().eq('id',id);
-  if(error){showToast('Gagal hapus: '+error.message);return;}
+  if(!confirm('Arsipkan barang ini?\n\nBarang akan disembunyikan dari daftar aktif, tapi semua riwayat transaksi & stok tetap tersimpan dan bisa dipulihkan kapan saja.')) return;
+  const {error}=await sb.from('barang').update({archived:true, archived_at:new Date().toISOString()}).eq('id',id);
+  if(error){showToast('Gagal arsipkan: '+error.message);return;}
   S.barang=S.barang.filter(b=>b.id!==id);
-  closeOverlay('modalDetail'); renderBarang(); showToast('Barang dihapus');
+  closeOverlay('modalDetail'); renderBarang(); showToast('Barang diarsipkan ✓');
 }
 async function saveBarang(){
   const nama=document.getElementById('mNama').value.trim();
@@ -2192,11 +2206,55 @@ async function getOrCreateWarung(userId){
   return ins.data;
 }
 
+// ═══════════════════════════════════════
+// ARSIP BARANG (SOFT DELETE)
+// ═══════════════════════════════════════
+async function renderArsip(){
+  const el=document.getElementById('arsipList');
+  el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i>Memuat...</div>';
+  const {data,error}=await sb.from('barang')
+    .select('*')
+    .eq('warung_id',S.warungId)
+    .eq('archived',true)
+    .order('archived_at',{ascending:false});
+  if(error){el.innerHTML='<div class="empty"><i class="ti ti-alert-circle"></i>Gagal load: '+error.message+'</div>';return;}
+  if(!data||!data.length){el.innerHTML='<div class="empty"><i class="ti ti-archive"></i>Tidak ada barang yang diarsipkan</div>';return;}
+  el.innerHTML='<div class="card" style="padding:8px 14px">'+data.map(b=>`
+    <div class="list-item">
+      <div class="list-ava" style="background:var(--bg2);color:var(--text3)"><i class="ti ${getIcon(b.kategori)}"></i></div>
+      <div class="list-info">
+        <div class="list-title" style="color:var(--text2)">${b.nama}</div>
+        <div class="list-sub">${b.kategori} · Diarsipkan ${fmtDt(new Date(b.archived_at).getTime())}</div>
+      </div>
+      <button class="btn sm primary" style="flex-shrink:0" onclick="pulihkanBarang('${b.id}','${b.nama.replace(/'/g,"\\'") }')">
+        <i class="ti ti-restore"></i>Pulihkan
+      </button>
+    </div>`).join('')+'</div>';
+}
+
+async function pulihkanBarang(id,nama){
+  const {error}=await sb.from('barang').update({archived:false,archived_at:null}).eq('id',id);
+  if(error){showToast('Gagal pulihkan: '+error.message);return;}
+  const {data:b}=await sb.from('barang').select('*, batches(*)').eq('id',id).single();
+  if(b){
+    S.barang.push({
+      id:b.id,nama:b.nama,kategori:b.kategori,hargaJual:Number(b.harga_jual),
+      minStok:b.min_stok,leadTime:b.lead_time,
+      batches:(b.batches||[]).map(bt=>({id:bt.id,qty:bt.qty,hargaBeli:Number(bt.harga_beli),ts:new Date(bt.created_at).getTime()})).sort((x,y)=>x.ts-y.ts),
+      soldHistory:[]
+    });
+  }
+  renderArsip();
+  showToast(nama+' berhasil dipulihkan ✓');
+}
+
 async function loadAllData(){
   // 1. BARANG + BATCHES
   const {data:barangData,error:be}=await sb
     .from('barang').select('*, batches(*)')
-    .eq('warung_id',S.warungId).order('created_at');
+    .eq('warung_id',S.warungId)
+    .eq('archived',false)
+    .order('created_at');
   if(be) throw new Error('Load barang: '+be.message);
   S.barang=(barangData||[]).map(b=>({
     id:b.id, nama:b.nama, kategori:b.kategori, hargaJual:Number(b.harga_jual),
