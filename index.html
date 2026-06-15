@@ -692,6 +692,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script>
 // ═══════════════════════════════════════
 // SUPABASE CONFIG
@@ -2019,9 +2020,14 @@ async function exportExcel(){
 
 async function exportPDF(){
   if(!LS.data){showToast('Muat data dulu');return;}
-  if(typeof window.jspdf==='undefined'){showToast('Library PDF belum siap, coba lagi');return;}
+
+  // jsPDF bisa expose dirinya dengan beberapa cara tergantung versi
+  let jsPDF;
+  if(window.jspdf?.jsPDF) jsPDF=window.jspdf.jsPDF;
+  else if(window.jsPDF) jsPDF=window.jsPDF;
+  else { showToast('Library PDF gagal load, refresh halaman dulu',4000); return; }
+
   showToast('Menyiapkan PDF...',3000);
-  const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const {txData,lossData,stokData,abcItems}=LS.data;
 
@@ -2031,11 +2037,11 @@ async function exportPDF(){
     doc.setFontSize(size); doc.setFont('helvetica',bold?'bold':'normal');
     doc.setTextColor(...color); doc.text(txt,pad,y); y+=size*0.4+2;
   };
-  const row=(lbl,val,color=[0,0,0])=>{
-    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
-    doc.text(lbl,pad,y);
-    doc.setFont('helvetica','bold'); doc.setTextColor(...color);
-    doc.text(val,W-pad,y,{align:'right'}); y+=5;
+  const row=(lbl,val,color=[60,60,60])=>{
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(120,120,120);
+    doc.text(String(lbl),pad,y);
+    doc.setFont('helvetica','bold'); doc.setTextColor(color[0],color[1],color[2]);
+    doc.text(String(val),W-pad,y,{align:'right'}); y+=5;
   };
   const divider=()=>{ doc.setDrawColor(200,200,200); doc.line(pad,y,W-pad,y); y+=4; };
 
@@ -2058,7 +2064,7 @@ async function exportPDF(){
   row('HPP Barang Terjual',fmtRp(hpp));
   row('Kerugian Inventory',fmtRp(loss),[180,50,50]);
   row('Keuntungan Dagang',fmtRp(profit),profit>=0?[12,110,60]:[180,50,50]);
-  row('Margin',tot?Math.round(profit/tot*100)+'%':[profit>=0?[12,110,60]:[180,50,50]]);
+  row('Margin',tot?Math.round(profit/tot*100)+'%':'0%',profit>=0?[12,110,60]:[180,50,50]);
   row('Jumlah Transaksi',txData.length+' transaksi');
   y+=4; divider();
 
