@@ -1481,28 +1481,21 @@ async function loadAllData(){
   S.opnames=(lastOpname||[]).map(o=>({ts:new Date(o.created_at).getTime(),akurasi:Number(o.akurasi),count:o.jumlah_sku}));
 }
 
+let authHandled=false;
+
 async function afterLogin(user){
+  if(authHandled) return;
+  authHandled=true;
   showLoading();
   S.userEmail=user.email||'';
   const warung=await getOrCreateWarung(user.id);
-  if(!warung){ hideLoading(); showToast('Gagal memuat warung'); showLogin(); return; }
+  if(!warung){ hideLoading(); showToast('Gagal memuat warung'); showLogin(); authHandled=false; return; }
   S.warungId=warung.id;
   S.namaWarung=warung.nama_warung||'Warung Saya';
   await loadAllData();
   hideLoading();
   hideLogin();
   goScreen('dashboard');
-}
-
-async function initApp(){
-  showLoading();
-  try{
-    const {data:{session}}=await sb.auth.getSession();
-    if(!session){ hideLoading(); showLogin(); return; }
-    await afterLogin(session.user);
-  }catch(e){
-    console.error(e); hideLoading(); showLogin();
-  }
 }
 
 // ═══════════════════════════════════════
@@ -1522,11 +1515,19 @@ if(!sb){
     </div>`;
   showLogin();
 } else {
+  showLoading();
   sb.auth.onAuthStateChange((event,session)=>{
-    if(event==='SIGNED_IN' && session) afterLogin(session.user);
-    if(event==='SIGNED_OUT') showLogin();
+    if(session && (event==='SIGNED_IN' || event==='INITIAL_SESSION')){
+      afterLogin(session.user);
+    } else if(event==='SIGNED_OUT'){
+      authHandled=false;
+      hideLoading();
+      showLogin();
+    } else if(event==='INITIAL_SESSION' && !session){
+      hideLoading();
+      showLogin();
+    }
   });
-  initApp();
 }
 </script>
 </body>
