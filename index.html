@@ -1419,11 +1419,17 @@ async function saveWarungName(){
 }
 
 async function getOrCreateWarung(userId){
-  const {data:warung,error}=await sb.from('warungs').select('*').eq('owner_id',userId).maybeSingle();
-  if(error){ console.error(error); }
-  if(warung) return warung;
+  const sel=await sb.from('warungs').select('*').eq('owner_id',userId).maybeSingle();
+  if(sel.error){
+    showToast('Select error: '+sel.error.message, 6000);
+    return null;
+  }
+  if(sel.data) return sel.data;
   const ins=await sb.from('warungs').insert({owner_id:userId}).select().single();
-  if(ins.error){ console.error(ins.error); return null; }
+  if(ins.error){
+    showToast('Insert error: '+ins.error.message, 6000);
+    return null;
+  }
   return ins.data;
 }
 
