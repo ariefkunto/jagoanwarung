@@ -548,6 +548,50 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- ══════════════ LAPORAN & EXPORT ══════════════ -->
+<div class="screen" id="screen-laporan">
+  <div class="content">
+
+    <!-- PERIODE -->
+    <div class="card" style="padding:12px 14px">
+      <div class="card-title">Periode laporan</div>
+      <div class="tag-row" id="laporanPeriodTags">
+        <div class="tag active" onclick="setLaporanPeriod('today',this)">Hari ini</div>
+        <div class="tag" onclick="setLaporanPeriod('week',this)">Minggu ini</div>
+        <div class="tag" onclick="setLaporanPeriod('month',this)">Bulan ini</div>
+        <div class="tag" onclick="setLaporanPeriod('custom',this)">Custom</div>
+      </div>
+      <div id="laporanCustomRange" style="display:none;margin-top:10px">
+        <div class="inp-row">
+          <div class="inp-group"><label>Dari</label><input type="date" id="laporanFrom"></div>
+          <div class="inp-group"><label>Sampai</label><input type="date" id="laporanTo"></div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:8px" id="laporanPeriodLabel">Menampilkan: Hari ini</div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="card" id="laporanPreview">
+      <div class="card-title">Preview laporan</div>
+      <div class="empty"><i class="ti ti-loader-2"></i>Memuat data...</div>
+    </div>
+
+    <!-- EXPORT BUTTONS -->
+    <div class="card" style="padding:12px 14px">
+      <div class="card-title" style="margin-bottom:10px">Export</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn primary" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i>Download Excel (.xlsx)</button>
+        <button class="btn" onclick="exportPDF()"><i class="ti ti-file-type-pdf"></i>Download PDF</button>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.5">
+        Excel berisi 4 sheet: Penjualan, Stok, Kerugian, ABC Analysis.<br>
+        PDF berisi ringkasan 1 halaman — cocok untuk laporan ke bank / supplier.
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- ══════════════ NOTIFIKASI ══════════════ -->
 <div class="screen" id="screen-notif">
   <div class="content">
@@ -577,6 +621,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('kerugian')"><i class="ti ti-alert-triangle"></i>Catat Kerugian Inventory</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('opname')"><i class="ti ti-clipboard-check"></i>Stock Opname</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('restock')"><i class="ti ti-shield-check"></i>Jagoan Warung</button>
+    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('laporan')"><i class="ti ti-file-spreadsheet"></i>Laporan & Export</button>
     <button class="btn" onclick="closeOverlay('moreMenu');openProfil()"><i class="ti ti-user-circle"></i>Profil Warung</button>
   </div>
 </div>
@@ -645,6 +690,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div><!-- /app -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
 // ═══════════════════════════════════════
 // SUPABASE CONFIG
@@ -940,11 +987,11 @@ function stockAccuracy(){
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
-const secondaryScreens = ['kerugian','opname','restock','notif'];
+const secondaryScreens = ['kerugian','opname','restock','notif','laporan'];
 const screenLabel = {
   dashboard:'Asisten Pintar Warung', barang:'Master Barang', pos:'Jual Barang',
   belanja:'Belanja Barang', kerugian:'Catat Kerugian', opname:'Stock Opname',
-  restock:'Jagoan Warung', notif:'Notifikasi',
+  restock:'Jagoan Warung', notif:'Notifikasi', laporan:'Laporan & Export',
 };
 
 function goScreen(s){
@@ -970,6 +1017,7 @@ function goScreen(s){
     opname: renderOpname,
     restock: ()=>{ renderRestock(); loadAbcAnalysis(); },
     notif: renderNotif,
+    laporan: initLaporan,
   };
   if(renders[s]) renders[s]();
 }
@@ -1809,8 +1857,253 @@ function renderNotif(){
 }
 
 // ═══════════════════════════════════════
-// AUTH & DATA LOADING (SUPABASE)
+// LAPORAN & EXPORT
 // ═══════════════════════════════════════
+const LS = { period:'today', from:null, to:null, data:null };
+
+function setLaporanPeriod(p,el){
+  document.querySelectorAll('#laporanPeriodTags .tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); LS.period=p;
+  const cr=document.getElementById('laporanCustomRange');
+  if(p==='custom'){
+    cr.style.display='block';
+    const today=new Date().toISOString().slice(0,10);
+    if(!document.getElementById('laporanFrom').value) document.getElementById('laporanFrom').value=today;
+    if(!document.getElementById('laporanTo').value) document.getElementById('laporanTo').value=today;
+    document.getElementById('laporanFrom').onchange=loadLaporanData;
+    document.getElementById('laporanTo').onchange=loadLaporanData;
+  } else { cr.style.display='none'; }
+  loadLaporanData();
+}
+
+function getLaporanRange(){
+  const now=new Date();
+  let from,to;
+  if(LS.period==='today'){
+    from=new Date(now); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else if(LS.period==='week'){
+    from=new Date(now); from.setDate(from.getDate()-from.getDay()); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else if(LS.period==='month'){
+    from=new Date(now.getFullYear(),now.getMonth(),1,0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else {
+    const f=document.getElementById('laporanFrom')?.value||now.toISOString().slice(0,10);
+    const t=document.getElementById('laporanTo')?.value||now.toISOString().slice(0,10);
+    from=new Date(f+'T00:00:00'); to=new Date(t+'T23:59:59');
+  }
+  return {from,to};
+}
+
+async function loadLaporanData(){
+  const {from,to}=getLaporanRange();
+  const lbl={today:'Hari ini',week:'Minggu ini',month:'Bulan ini',custom:'Custom'}[LS.period];
+  document.getElementById('laporanPeriodLabel').textContent='Menampilkan: '+lbl+' ('+fmtDateShort(from)+(LS.period==='today'?'':' – '+fmtDateShort(to))+')';
+
+  const prev=document.getElementById('laporanPreview');
+  prev.innerHTML='<div class="card-title">Preview laporan</div><div class="empty"><i class="ti ti-loader-2"></i>Memuat data...</div>';
+
+  const fromISO=from.toISOString(), toISO=to.toISOString();
+
+  // 1. PENJUALAN
+  const {data:txData}=await sb.from('transactions')
+    .select('total,hpp,payment_method,created_at,transaction_items(barang_id,qty,harga_jual)')
+    .eq('warung_id',S.warungId).gte('created_at',fromISO).lte('created_at',toISO)
+    .order('created_at',{ascending:false});
+
+  // 2. KERUGIAN
+  const {data:lossData}=await sb.from('losses')
+    .select('*, barang(nama)')
+    .eq('warung_id',S.warungId).gte('created_at',fromISO).lte('created_at',toISO);
+
+  // 3. STOK SAAT INI (snapshot)
+  const stokData=S.barang.map(b=>({
+    nama:b.nama, kategori:b.kategori,
+    stok:stok(b), hargaJual:b.hargaJual,
+    hargaModal:Math.round(avgHpp(b)),
+    nilaiStok:Math.round(stok(b)*avgHpp(b)),
+  }));
+
+  // 4. ABC PER ITEM
+  const agg={};
+  (txData||[]).forEach(t=>(t.transaction_items||[]).forEach(it=>{
+    agg[it.barang_id]=(agg[it.barang_id]||0)+it.qty*Number(it.harga_jual);
+  }));
+  const abcItems=Object.entries(agg).map(([id,rev])=>({
+    nama:S.barang.find(x=>x.id===id)?.nama||'(dihapus)', rev
+  })).sort((a,c)=>c.rev-a.rev);
+  const abcTotal=abcItems.reduce((s,x)=>s+x.rev,0);
+  let cum=0;
+  abcItems.forEach(x=>{ x.pct=abcTotal?x.rev/abcTotal*100:0; cum+=x.pct; x.cumPct=cum; x.cls=cum<=80?'A':cum<=95?'B':'C'; });
+
+  LS.data={txData:txData||[], lossData:lossData||[], stokData, abcItems, abcTotal, from, to};
+
+  const totalPenjualan=(txData||[]).reduce((s,t)=>s+Number(t.total),0);
+  const totalHpp=(txData||[]).reduce((s,t)=>s+Number(t.hpp),0);
+  const totalLoss=(lossData||[]).reduce((s,l)=>s+Number(l.nilai),0);
+  const profit=totalPenjualan-totalHpp-totalLoss;
+  const nilaiStok=stokData.reduce((s,x)=>s+x.nilaiStok,0);
+  const payBreak={Cash:0,QRIS:0,Transfer:0,Lainnya:0};
+  (txData||[]).forEach(t=>{ payBreak[t.payment_method]=(payBreak[t.payment_method]||0)+Number(t.total); });
+
+  prev.innerHTML=`
+    <div class="card-title">Preview laporan</div>
+    <div class="section-label" style="margin-bottom:6px">Penjualan</div>
+    <div class="info-row"><span class="info-label">Total Omzet</span><span style="font-weight:700;color:var(--green)">${fmtRp(totalPenjualan)}</span></div>
+    <div class="info-row"><span class="info-label">HPP Terjual</span><span>${fmtRp(totalHpp)}</span></div>
+    <div class="info-row"><span class="info-label">Kerugian Inventory</span><span style="color:var(--red)">${fmtRp(totalLoss)}</span></div>
+    <div class="info-row"><span class="info-label">Keuntungan Dagang</span><span style="font-weight:700;color:${profit>=0?'var(--green)':'var(--red)'}">${fmtRp(profit)}</span></div>
+    <div class="info-row" style="margin-bottom:8px"><span class="info-label">Margin</span><span>${totalPenjualan?Math.round(profit/totalPenjualan*100):0}%</span></div>
+    <div class="section-label" style="margin:8px 0 6px">Breakdown pembayaran</div>
+    ${Object.entries(payBreak).filter(([,v])=>v>0).map(([k,v])=>`<div class="info-row"><span class="info-label">${k}</span><span>${fmtRp(v)}</span></div>`).join('')}
+    <div class="section-label" style="margin:8px 0 6px">Stok & Inventory</div>
+    <div class="info-row"><span class="info-label">Total SKU</span><span>${stokData.length}</span></div>
+    <div class="info-row"><span class="info-label">Nilai Stok (Modal)</span><span style="font-weight:700">${fmtRp(nilaiStok)}</span></div>
+    <div class="section-label" style="margin:8px 0 6px">ABC Analysis</div>
+    <div class="info-row"><span class="info-label">Kelas A</span><span>${abcItems.filter(x=>x.cls==='A').length} SKU</span></div>
+    <div class="info-row"><span class="info-label">Kelas B</span><span>${abcItems.filter(x=>x.cls==='B').length} SKU</span></div>
+    <div class="info-row"><span class="info-label">Kelas C</span><span>${abcItems.filter(x=>x.cls==='C').length} SKU</span></div>`;
+}
+
+function initLaporan(){
+  loadLaporanData();
+}
+
+function periodStr(){
+  const {from,to}=getLaporanRange();
+  return fmtDateShort(from)+(LS.period==='today'?'':' s.d. '+fmtDateShort(to));
+}
+
+async function exportExcel(){
+  if(!LS.data){showToast('Muat data dulu');return;}
+  if(typeof XLSX==='undefined'){showToast('Library Excel belum siap, coba lagi');return;}
+  showToast('Menyiapkan Excel...',3000);
+  const {txData,lossData,stokData,abcItems}=LS.data;
+  const wb=XLSX.utils.book_new();
+
+  // SHEET 1: PENJUALAN
+  const txRows=[['Tanggal','Jumlah Item','Total Penjualan','HPP','Profit','Metode Bayar']];
+  txData.forEach(t=>{
+    const items=(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0);
+    txRows.push([new Date(t.created_at).toLocaleString('id-ID'),items,Number(t.total),Number(t.hpp),Number(t.total)-Number(t.hpp),t.payment_method]);
+  });
+  txRows.push([]);
+  const tot=txData.reduce((s,t)=>s+Number(t.total),0);
+  const hpp=txData.reduce((s,t)=>s+Number(t.hpp),0);
+  txRows.push(['TOTAL','',tot,hpp,tot-hpp,'']);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(txRows),'Penjualan');
+
+  // SHEET 2: STOK
+  const stokRows=[['Nama Barang','Kategori','Stok (pcs)','Harga Modal (Rp)','Harga Jual (Rp)','Nilai Stok (Rp)']];
+  stokData.forEach(x=>stokRows.push([x.nama,x.kategori,x.stok,x.hargaModal,x.hargaJual,x.nilaiStok]));
+  stokRows.push([]);
+  stokRows.push(['TOTAL NILAI STOK','','','','',stokData.reduce((s,x)=>s+x.nilaiStok,0)]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(stokRows),'Stok');
+
+  // SHEET 3: KERUGIAN
+  const lossRows=[['Tanggal','Nama Barang','Jenis','Qty','Nilai Kerugian (Rp)','Catatan']];
+  lossData.forEach(l=>lossRows.push([new Date(l.created_at).toLocaleString('id-ID'),l.barang?.nama||'-',l.jenis,l.qty,Number(l.nilai),l.note||'']));
+  lossRows.push([]);
+  lossRows.push(['TOTAL','','','',lossData.reduce((s,l)=>s+Number(l.nilai),0),'']);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(lossRows),'Kerugian');
+
+  // SHEET 4: ABC ANALYSIS
+  const abcRows=[['Nama Barang','Omzet (Rp)','Kontribusi %','Kumulatif %','Kelas']];
+  abcItems.forEach(x=>abcRows.push([x.nama,Math.round(x.rev),Math.round(x.pct*10)/10,Math.round(x.cumPct*10)/10,x.cls]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(abcRows),'ABC Analysis');
+
+  XLSX.writeFile(wb,`Laporan_JagoanWarung_${periodStr().replace(/ /g,'_').replace(/\./g,'')}.xlsx`);
+  showToast('Excel berhasil didownload!');
+}
+
+async function exportPDF(){
+  if(!LS.data){showToast('Muat data dulu');return;}
+  if(typeof window.jspdf==='undefined'){showToast('Library PDF belum siap, coba lagi');return;}
+  showToast('Menyiapkan PDF...',3000);
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const {txData,lossData,stokData,abcItems}=LS.data;
+
+  const W=210, pad=16;
+  let y=pad;
+  const line=(txt,size=10,bold=false,color=[0,0,0])=>{
+    doc.setFontSize(size); doc.setFont('helvetica',bold?'bold':'normal');
+    doc.setTextColor(...color); doc.text(txt,pad,y); y+=size*0.4+2;
+  };
+  const row=(lbl,val,color=[0,0,0])=>{
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+    doc.text(lbl,pad,y);
+    doc.setFont('helvetica','bold'); doc.setTextColor(...color);
+    doc.text(val,W-pad,y,{align:'right'}); y+=5;
+  };
+  const divider=()=>{ doc.setDrawColor(200,200,200); doc.line(pad,y,W-pad,y); y+=4; };
+
+  // HEADER
+  doc.setFillColor(29,158,117); doc.rect(0,0,W,18,'F');
+  doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text('Jagoan Warung — Laporan Keuangan',pad,11);
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text('Periode: '+periodStr()+'  |  Warung: '+S.namaWarung,pad,16);
+  y=26;
+
+  // RINGKASAN PENJUALAN
+  const tot=txData.reduce((s,t)=>s+Number(t.total),0);
+  const hpp=txData.reduce((s,t)=>s+Number(t.hpp),0);
+  const loss=lossData.reduce((s,l)=>s+Number(l.nilai),0);
+  const profit=tot-hpp-loss;
+  line('Ringkasan Penjualan',12,true,[0,0,0]); y+=1;
+  divider();
+  row('Total Omzet',fmtRp(tot),[12,110,60]);
+  row('HPP Barang Terjual',fmtRp(hpp));
+  row('Kerugian Inventory',fmtRp(loss),[180,50,50]);
+  row('Keuntungan Dagang',fmtRp(profit),profit>=0?[12,110,60]:[180,50,50]);
+  row('Margin',tot?Math.round(profit/tot*100)+'%':[profit>=0?[12,110,60]:[180,50,50]]);
+  row('Jumlah Transaksi',txData.length+' transaksi');
+  y+=4; divider();
+
+  // BREAKDOWN PAYMENT
+  line('Breakdown Pembayaran',10,true); y+=1;
+  const payBreak={};
+  txData.forEach(t=>{ payBreak[t.payment_method]=(payBreak[t.payment_method]||0)+Number(t.total); });
+  Object.entries(payBreak).forEach(([k,v])=>row(k,fmtRp(v)));
+  y+=4; divider();
+
+  // STOK
+  line('Ringkasan Stok',10,true); y+=1;
+  row('Total SKU',stokData.length+' item');
+  row('Nilai Inventory (Modal)',fmtRp(stokData.reduce((s,x)=>s+x.nilaiStok,0)));
+  row('Barang Habis (stok=0)',stokData.filter(x=>x.stok===0).length+' SKU',[180,50,50]);
+  y+=4; divider();
+
+  // ABC
+  line('ABC Analysis',10,true); y+=1;
+  const clsCount={A:0,B:0,C:0},clsRev={A:0,B:0,C:0};
+  abcItems.forEach(x=>{ clsCount[x.cls]++; clsRev[x.cls]+=x.rev; });
+  row('Kelas A (80% omzet)',clsCount.A+' SKU',[12,110,60]);
+  row('Kelas B (15% omzet)',clsCount.B+' SKU',[30,80,160]);
+  row('Kelas C (5% omzet)',clsCount.C+' SKU',[100,100,100]);
+  y+=6;
+
+  // TOP 5 PRODUK
+  if(abcItems.length){
+    line('Top 5 Produk (berdasarkan omzet)',10,true); y+=2;
+    abcItems.slice(0,5).forEach((x,i)=>{
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+      doc.text((i+1)+'. '+x.nama,pad,y);
+      doc.setFont('helvetica','bold'); doc.setTextColor(12,110,60);
+      doc.text(fmtRp(Math.round(x.rev)),W-pad,y,{align:'right'}); y+=5;
+    });
+  }
+
+  // FOOTER
+  y=285;
+  doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150);
+  doc.text('Digenerate oleh Jagoan Warung (jw.karyawansakti.com) — '+new Date().toLocaleString('id-ID'),pad,y);
+
+  doc.save(`Laporan_JagoanWarung_${periodStr().replace(/ /g,'_').replace(/\./g,'')}.pdf`);
+  showToast('PDF berhasil didownload!');
+}
 function showLogin(){ document.getElementById('loginScreen').style.display='flex'; }
 function hideLogin(){ document.getElementById('loginScreen').style.display='none'; }
 let loadingTimeout=null;
