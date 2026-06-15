@@ -8,9 +8,9 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#fff;--bg2:#f5f5f4;--bg3:#efefed;
-  --text:#111;--text2:#666;--text3:#aaa;
-  --border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.18);
+  --bg:#ffffff;--bg2:#eef0f2;--bg3:#dfe2e6;
+  --text:#0a0a0a;--text2:#52606b;--text3:#8a96a3;
+  --border:rgba(0,0,0,.14);--border2:rgba(0,0,0,.32);
   --green:#0c6b47;--green-bg:#e2f5ec;
   --amber:#8a5000;--amber-bg:#fef3da;
   --red:#a12525;--red-bg:#fdeaea;
@@ -21,9 +21,9 @@
 }
 @media(prefers-color-scheme:dark){
   :root{
-    --bg:#1a1a1a;--bg2:#252525;--bg3:#111;
-    --text:#f0f0f0;--text2:#999;--text3:#555;
-    --border:rgba(255,255,255,.1);--border2:rgba(255,255,255,.18);
+    --bg:#202225;--bg2:#2e3136;--bg3:#0a0b0c;
+    --text:#fafafa;--text2:#b6bec7;--text3:#7a838d;
+    --border:rgba(255,255,255,.14);--border2:rgba(255,255,255,.32);
     --green:#5ecda8;--green-bg:#062e1f;
     --amber:#f0b040;--amber-bg:#3a2000;
     --red:#f09090;--red-bg:#3a0f0f;
@@ -110,9 +110,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* INPUTS */
 .inp-group{display:flex;flex-direction:column;gap:5px}
-.inp-group label{font-size:12px;font-weight:500;color:var(--text2)}
-.inp-group input,.inp-group select,.inp-group textarea{width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--r8);background:var(--bg);color:var(--text);font-size:14px;outline:none;font-family:inherit}
-.inp-group input:focus,.inp-group select:focus{border-color:var(--brand)}
+.inp-group label{font-size:12px;font-weight:600;color:var(--text2)}
+.inp-group input,.inp-group select,.inp-group textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border2);border-radius:var(--r8);background:var(--bg2);color:var(--text);font-size:15px;font-weight:600;outline:none;font-family:inherit}
+.inp-group input::placeholder{color:var(--text3);font-weight:400}
+.inp-group input:focus,.inp-group select:focus{border-color:var(--brand);background:var(--bg)}
 .inp-row{display:flex;gap:10px}
 .inp-row .inp-group{flex:1}
 
@@ -131,8 +132,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cart-item:last-child{border-bottom:none}
 .qty-ctrl{display:flex;align-items:center;gap:6px}
 .qty-btn{width:30px;height:30px;border:1px solid var(--border2);border-radius:var(--r8);background:var(--bg2);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;color:var(--text);line-height:1;flex-shrink:0}
-.qty-input{width:46px;padding:6px 2px;border:1px solid var(--border2);border-radius:var(--r8);background:var(--bg);color:var(--text);font-size:14px;text-align:center;outline:none;font-weight:600}
-.qty-input:focus{border-color:var(--brand)}
+.qty-input{width:48px;padding:6px 2px;border:1.5px solid var(--border2);border-radius:var(--r8);background:var(--bg2);color:var(--text);font-size:15px;text-align:center;outline:none;font-weight:700}
+.qty-input:focus{border-color:var(--brand);background:var(--bg)}
 .total-strip{background:var(--bg2);border-radius:var(--r8);padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
 
 /* OPNAME */
@@ -142,8 +143,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .op-name p{font-size:14px;font-weight:500;color:var(--text)}
 .op-name span{font-size:11px;color:var(--text2)}
 .op-diff{font-size:12px;font-weight:600;min-width:40px;text-align:right}
-.op-input{width:70px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r8);background:var(--bg);color:var(--text);font-size:14px;text-align:center;outline:none}
-.op-input:focus{border-color:var(--brand)}
+.op-input{width:70px;padding:8px 10px;border:1.5px solid var(--border2);border-radius:var(--r8);background:var(--bg2);color:var(--text);font-size:15px;font-weight:700;text-align:center;outline:none}
+.op-input:focus{border-color:var(--brand);background:var(--bg)}
 
 /* TAGS */
 .tag-row{display:flex;gap:8px;flex-wrap:wrap}
@@ -254,9 +255,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="content">
 
+    <!-- PERIODE -->
+    <div class="card" style="padding:12px 14px">
+      <div class="tag-row" id="periodTags">
+        <div class="tag active" onclick="setPeriod('today',this)">Hari ini</div>
+        <div class="tag" onclick="setPeriod('week',this)">Minggu ini</div>
+        <div class="tag" onclick="setPeriod('month',this)">Bulan ini</div>
+        <div class="tag" onclick="setPeriod('custom',this)">Custom</div>
+      </div>
+      <div id="customDateRange" style="display:none;margin-top:10px">
+        <div class="inp-row">
+          <div class="inp-group"><label>Dari</label><input type="date" id="periodFrom"></div>
+          <div class="inp-group"><label>Sampai</label><input type="date" id="periodTo"></div>
+        </div>
+        <button class="btn primary sm" style="width:100%;margin-top:8px" onclick="applyCustomPeriod()"><i class="ti ti-check"></i>Terapkan</button>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:8px" id="periodLabel">Menampilkan: Hari ini</div>
+    </div>
+
     <div class="stat-grid">
       <div class="stat">
-        <div class="stat-label">Penjualan hari ini</div>
+        <div class="stat-label">Total Penjualan</div>
         <div class="stat-val g" id="dPenjualan">Rp 0</div>
         <div class="stat-sub" id="dTxCount">0 transaksi</div>
       </div>
@@ -271,9 +290,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub">DOI ≤ 2 hari</div>
       </div>
       <div class="stat">
-        <div class="stat-label">HPP kerugian</div>
+        <div class="stat-label">HPP Kerugian</div>
         <div class="stat-val r" id="dLoss">Rp 0</div>
-        <div class="stat-sub">hari ini</div>
+        <div class="stat-sub">pada periode ini</div>
       </div>
     </div>
 
@@ -312,10 +331,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="restockList"><div class="empty" style="padding:16px"><i class="ti ti-check"></i>Tidak ada rekomendasi</div></div>
     </div>
 
-    <!-- TRANSAKSI HARI INI -->
+    <!-- TRANSAKSI -->
     <div class="card">
       <div class="sec-hdr">
-        <span class="sec-hdr-title">Transaksi hari ini</span>
+        <span class="sec-hdr-title">Riwayat Transaksi</span>
       </div>
       <div id="txList"><div class="empty" style="padding:16px"><i class="ti ti-receipt"></i>Belum ada transaksi</div></div>
     </div>
@@ -502,6 +521,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="restockFull"><div class="empty"><i class="ti ti-check"></i>Belum ada barang</div></div>
     </div>
 
+    <!-- ABC ANALYSIS / PARETO -->
+    <div class="card">
+      <div class="sec-hdr">
+        <span class="sec-hdr-title">Analisis ABC (Pareto)</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:10px">
+        Kelas <b style="color:var(--green)">A</b> = produk penyumbang omzet terbesar (≈80%) — jaga stoknya. Kelas <b style="color:var(--blue)">B</b> = kontribusi menengah (≈15%). Kelas <b style="color:var(--text2)">C</b> = kontribusi kecil (≈5%) — pertimbangkan kurangi variasi.
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px" id="abcPeriodLabel">Berdasarkan: Hari ini</div>
+      <div id="abcSummary"></div>
+      <div id="abcChart" style="margin:12px 0"></div>
+      <div id="abcList"></div>
+    </div>
+
   </div>
 </div>
 
@@ -623,6 +656,9 @@ const S = {
   jenis: 'Barang Rusak',
   paymentMethod: 'Cash',
   editingId: null,
+  period: 'today',
+  periodFrom: null,
+  periodTo: null,
 };
 
 // ═══════════════════════════════════════
@@ -828,7 +864,7 @@ function renderDashboard(){
   // TX list
   const payIcon = {Cash:'ti-cash', QRIS:'ti-qrcode'};
   document.getElementById('txList').innerHTML = todayTx.length
-    ? todayTx.slice().reverse().slice(0,5).map(t=>`
+    ? todayTx.slice(0,20).map(t=>`
       <div class="ledger-item">
         <div class="ledger-icon pos"><i class="ti ${payIcon[t.payment]||'ti-shopping-cart'}"></i></div>
         <div class="list-info"><div class="list-title">${t.items} item terjual</div><div class="list-sub">${t.payment||'Cash'} · ${fmtDt(t.ts)}</div></div>
@@ -838,6 +874,184 @@ function renderDashboard(){
         </div>
       </div>`).join('')
     : '<div class="empty" style="padding:12px"><i class="ti ti-receipt"></i>Belum ada transaksi</div>';
+}
+
+// ═══════════════════════════════════════
+// PERIODE DASHBOARD
+// ═══════════════════════════════════════
+function getPeriodRange(){
+  const now=new Date();
+  let from,to;
+  if(S.period==='today'){
+    from=new Date(now); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else if(S.period==='week'){
+    from=new Date(now); from.setDate(from.getDate()-from.getDay()); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else if(S.period==='month'){
+    from=new Date(now.getFullYear(),now.getMonth(),1,0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else {
+    from=new Date((S.periodFrom||now.toISOString().slice(0,10))+'T00:00:00');
+    to=new Date((S.periodTo||now.toISOString().slice(0,10))+'T23:59:59');
+  }
+  return {from,to};
+}
+function fmtDateShort(d){
+  return d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+}
+function updatePeriodLabel(){
+  const {from,to}=getPeriodRange();
+  const labels={today:'Hari ini',week:'Minggu ini',month:'Bulan ini',custom:'Custom'};
+  let txt;
+  if(S.period==='today') txt=labels.today+' ('+fmtDateShort(from)+')';
+  else txt=labels[S.period]+' ('+fmtDateShort(from)+' – '+fmtDateShort(to)+')';
+  document.getElementById('periodLabel').textContent='Menampilkan: '+txt;
+}
+async function loadPeriodData(){
+  const {from,to}=getPeriodRange();
+  const fromISO=from.toISOString(), toISO=to.toISOString();
+
+  const {data:txData,error:te}=await sb.from('transactions')
+    .select('total, hpp, payment_method, created_at, transaction_items(qty)')
+    .eq('warung_id',S.warungId)
+    .gte('created_at',fromISO).lte('created_at',toISO)
+    .order('created_at',{ascending:false});
+  if(te){ showToast('Gagal load transaksi: '+te.message,4000); return; }
+  S.transactions=(txData||[]).map(t=>({
+    total:Number(t.total),hpp:Number(t.hpp),payment:t.payment_method,
+    ts:new Date(t.created_at).getTime(),
+    items:(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0)
+  }));
+
+  const {data:lossData,error:le}=await sb.from('losses')
+    .select('nilai, created_at')
+    .eq('warung_id',S.warungId)
+    .gte('created_at',fromISO).lte('created_at',toISO);
+  if(le){ showToast('Gagal load kerugian: '+le.message,4000); return; }
+  S.lossesToday=(lossData||[]).map(l=>({nilai:Number(l.nilai),ts:new Date(l.created_at).getTime()}));
+
+  renderDashboard();
+}
+function setPeriod(p,el){
+  document.querySelectorAll('#periodTags .tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  S.period=p;
+  const custom=document.getElementById('customDateRange');
+  if(p==='custom'){
+    custom.style.display='block';
+    const today=new Date().toISOString().slice(0,10);
+    if(!document.getElementById('periodFrom').value) document.getElementById('periodFrom').value=today;
+    if(!document.getElementById('periodTo').value) document.getElementById('periodTo').value=today;
+    return;
+  }
+  custom.style.display='none';
+  updatePeriodLabel();
+  loadPeriodData();
+}
+function applyCustomPeriod(){
+  const from=document.getElementById('periodFrom').value;
+  const to=document.getElementById('periodTo').value;
+  if(!from||!to){showToast('Pilih tanggal mulai dan akhir');return;}
+  if(from>to){showToast('Tanggal mulai harus sebelum tanggal akhir');return;}
+  S.periodFrom=from; S.periodTo=to;
+  updatePeriodLabel();
+  loadPeriodData();
+}
+
+// ═══════════════════════════════════════
+// ABC ANALYSIS (PARETO)
+// ═══════════════════════════════════════
+function buildParetoSvg(cumPcts){
+  const W=340,H=120,pad=6;
+  const n=cumPcts.length;
+  const innerW=W-2*pad, innerH=H-2*pad;
+  const points = n===1
+    ? [[pad, H-pad-(cumPcts[0]/100)*innerH],[W-pad, H-pad-(cumPcts[0]/100)*innerH]]
+    : cumPcts.map((p,i)=>[pad+(i/(n-1))*innerW, H-pad-(p/100)*innerH]);
+  const path=points.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const y80=H-pad-(80/100)*innerH;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:110px;display:block">
+    <line x1="${pad}" y1="${y80.toFixed(1)}" x2="${W-pad}" y2="${y80.toFixed(1)}" stroke="var(--amber)" stroke-width="1" stroke-dasharray="4 3"/>
+    <text x="${(W-pad).toFixed(1)}" y="${(y80-4).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--amber)">80%</text>
+    <path d="${path}" fill="none" stroke="var(--brand)" stroke-width="2"/>
+    ${points.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.5" fill="var(--brand)"/>`).join('')}
+  </svg>`;
+}
+async function loadAbcAnalysis(){
+  const {from,to}=getPeriodRange();
+  const labels={today:'Hari ini',week:'Minggu ini',month:'Bulan ini',custom:'Custom'};
+  let lbl=labels[S.period]+' ('+fmtDateShort(from)+(S.period==='today'?'':' – '+fmtDateShort(to))+')';
+  document.getElementById('abcPeriodLabel').textContent='Berdasarkan: '+lbl;
+
+  const summaryEl=document.getElementById('abcSummary');
+  const chartEl=document.getElementById('abcChart');
+  const listEl=document.getElementById('abcList');
+
+  const {data,error}=await sb.from('transaction_items')
+    .select('barang_id, qty, harga_jual, transactions!inner(created_at, warung_id)')
+    .eq('transactions.warung_id',S.warungId)
+    .gte('transactions.created_at',from.toISOString())
+    .lte('transactions.created_at',to.toISOString());
+
+  if(error){
+    summaryEl.innerHTML=''; chartEl.innerHTML='';
+    listEl.innerHTML='<div class="empty"><i class="ti ti-alert-circle"></i>Gagal load: '+error.message+'</div>';
+    return;
+  }
+
+  const agg={};
+  (data||[]).forEach(it=>{
+    const rev=it.qty*Number(it.harga_jual);
+    agg[it.barang_id]=(agg[it.barang_id]||0)+rev;
+  });
+
+  const items=Object.entries(agg).map(([id,rev])=>{
+    const b=S.barang.find(x=>x.id===id);
+    return {nama:b?b.nama:'(barang dihapus)', rev};
+  }).filter(x=>x.rev>0).sort((a,c)=>c.rev-a.rev);
+
+  if(!items.length){
+    summaryEl.innerHTML=''; chartEl.innerHTML='';
+    listEl.innerHTML='<div class="empty"><i class="ti ti-chart-bar"></i>Belum ada penjualan di periode ini</div>';
+    return;
+  }
+
+  const total=items.reduce((s,x)=>s+x.rev,0);
+  let cum=0;
+  items.forEach((x,i)=>{
+    x.pct=x.rev/total*100;
+    cum+=x.pct;
+    x.cumPct=cum;
+    x.cls = i===0 ? 'A' : cum<=80 ? 'A' : cum<=95 ? 'B' : 'C';
+  });
+
+  const classCount={A:0,B:0,C:0}, classRev={A:0,B:0,C:0};
+  items.forEach(x=>{ classCount[x.cls]++; classRev[x.cls]+=x.rev; });
+
+  summaryEl.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div class="stat" style="padding:10px"><div class="stat-label">Kelas A</div><div class="stat-val g">${classCount.A} SKU</div><div class="stat-sub">${(classRev.A/total*100).toFixed(0)}% omzet</div></div>
+      <div class="stat" style="padding:10px"><div class="stat-label">Kelas B</div><div class="stat-val" style="color:var(--blue)">${classCount.B} SKU</div><div class="stat-sub">${(classRev.B/total*100).toFixed(0)}% omzet</div></div>
+      <div class="stat" style="padding:10px"><div class="stat-label">Kelas C</div><div class="stat-val" style="color:var(--text2)">${classCount.C} SKU</div><div class="stat-sub">${(classRev.C/total*100).toFixed(0)}% omzet</div></div>
+    </div>`;
+
+  chartEl.innerHTML=buildParetoSvg(items.map(x=>x.cumPct));
+
+  const maxPct=items[0].pct;
+  const clsBadge={A:'g',B:'b',C:'gray'};
+  const clsColor={A:'#1D9E75',B:'#1556a0',C:'#8a96a3'};
+  listEl.innerHTML=items.map(x=>`
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:500">${x.nama}</div>
+          <div style="font-size:11px;color:var(--text2)">Omzet ${fmtRp(x.rev)} · ${x.pct.toFixed(1)}% (kumulatif ${x.cumPct.toFixed(0)}%)</div>
+        </div>
+        <span class="badge ${clsBadge[x.cls]}">${x.cls}</span>
+      </div>
+      <div class="doi-bar"><div class="doi-fill" style="width:${(x.pct/maxPct*100).toFixed(0)}%;background:${clsColor[x.cls]}"></div></div>
+    </div>`).join('');
 }
 
 // ═══════════════════════════════════════
@@ -860,9 +1074,15 @@ function renderBarang(){
       <div class="list-ava"><i class="ti ${getIcon(b.kategori)}"></i></div>
       <div class="list-info">
         <div class="list-title">${b.nama}</div>
-        <div class="list-sub">${b.kategori} · Stok ${s} pcs · HPP ${fmtRp(avgHpp(b))}</div>
+        <div class="list-sub">${b.kategori} · Stok ${s} pcs</div>
       </div>
-      <div class="list-right">${badge}<div style="font-size:12px;color:var(--text2);margin-top:4px">${fmtRp(b.hargaJual)}</div></div>
+      <div class="list-right">
+        ${badge}
+        <div style="font-size:12px;margin-top:4px;line-height:1.5">
+          <span style="color:var(--text2)">Modal </span><span style="font-weight:700">${fmtRp(avgHpp(b))}</span><br>
+          <span style="color:var(--text2)">Jual </span><span style="font-weight:700;color:var(--green)">${fmtRp(b.hargaJual)}</span>
+        </div>
+      </div>
     </div>`;
   }).join('')+'</div>';
 }
@@ -881,10 +1101,10 @@ function openDetail(id){
         <div style="font-size:12px;color:var(--text2)">${b.kategori}</div>
       </div>
     </div>
-    <div class="info-row"><span class="info-label">Stok sistem</span><span style="font-weight:600">${s} pcs</span></div>
-    <div class="info-row"><span class="info-label">Harga jual</span><span>${fmtRp(b.hargaJual)}</span></div>
-    <div class="info-row"><span class="info-label">Avg. HPP (FIFO)</span><span>${fmtRp(hpp)}</span></div>
-    <div class="info-row"><span class="info-label">Margin</span><span style="color:var(--green);font-weight:600">${margin}%</span></div>
+    <div class="info-row"><span class="info-label">Stok sistem</span><span style="font-weight:700">${s} pcs</span></div>
+    <div class="info-row"><span class="info-label">Harga Modal (rata-rata)</span><span style="font-weight:700">${fmtRp(hpp)}</span></div>
+    <div class="info-row"><span class="info-label">Harga Jual</span><span style="font-weight:700;color:var(--green)">${fmtRp(b.hargaJual)}</span></div>
+    <div class="info-row"><span class="info-label">Margin</span><span style="color:var(--green);font-weight:700">${margin}%</span></div>
     <div class="info-row"><span class="info-label">Days of Inventory</span><span>${doiLabel} ${doiStatus}</span></div>
     <div class="info-row"><span class="info-label">Minimum stok</span><span>${b.minStok} pcs</span></div>
     <div class="info-row"><span class="info-label">Lead time</span><span>${b.leadTime} hari</span></div>
@@ -1515,6 +1735,7 @@ async function afterLogin(user){
   hideLoading();
   hideLogin();
   goScreen('dashboard');
+  updatePeriodLabel();
 }
 
 // ═══════════════════════════════════════
