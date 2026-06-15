@@ -2021,14 +2021,22 @@ async function exportExcel(){
 async function exportPDF(){
   if(!LS.data){showToast('Muat data dulu');return;}
 
-  // jsPDF bisa expose dirinya dengan beberapa cara tergantung versi
-  let jsPDF;
-  if(window.jspdf?.jsPDF) jsPDF=window.jspdf.jsPDF;
-  else if(window.jsPDF) jsPDF=window.jsPDF;
-  else { showToast('Library PDF gagal load, refresh halaman dulu',4000); return; }
+  // Debug: cek semua kemungkinan global jsPDF
+  console.log('window.jspdf:', typeof window.jspdf);
+  console.log('window.jsPDF:', typeof window.jsPDF);
+  console.log('window.jspdf?.jsPDF:', typeof window.jspdf?.jsPDF);
+
+  let jsPDFClass;
+  if(window.jspdf?.jsPDF) jsPDFClass=window.jspdf.jsPDF;
+  else if(window.jsPDF) jsPDFClass=window.jsPDF;
+  else {
+    showToast('jsPDF tidak ditemukan: '+JSON.stringify(Object.keys(window).filter(k=>k.toLowerCase().includes('pdf'))),6000);
+    return;
+  }
 
   showToast('Menyiapkan PDF...',3000);
-  const doc=new jsPDF({unit:'mm',format:'a4'});
+  try {
+    const doc=new jsPDFClass({unit:'mm',format:'a4'});
   const {txData,lossData,stokData,abcItems}=LS.data;
 
   const W=210, pad=16;
@@ -2109,6 +2117,10 @@ async function exportPDF(){
 
   doc.save(`Laporan_JagoanWarung_${periodStr().replace(/ /g,'_').replace(/\./g,'')}.pdf`);
   showToast('PDF berhasil didownload!');
+  } catch(e) {
+    console.error('PDF error:', e);
+    showToast('Error PDF: '+e.message, 6000);
+  }
 }
 function showLogin(){ document.getElementById('loginScreen').style.display='flex'; }
 function hideLogin(){ document.getElementById('loginScreen').style.display='none'; }
