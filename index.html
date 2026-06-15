@@ -1239,10 +1239,16 @@ async function loadAbcAnalysis(){
   const listEl=document.getElementById('abcList');
 
   const {data,error}=await sb.from('transaction_items')
-    .select('barang_id, qty, harga_jual, transactions!inner(created_at, warung_id)')
-    .eq('transactions.warung_id',S.warungId)
-    .gte('transactions.created_at',from.toISOString())
-    .lte('transactions.created_at',to.toISOString());
+    .select('barang_id, qty, harga_jual, transaction_id')
+    .in('transaction_id',
+      (await sb.from('transactions')
+        .select('id')
+        .eq('warung_id',S.warungId)
+        .gte('created_at',from.toISOString())
+        .lte('created_at',to.toISOString())
+        .then(r=>r.data||[])
+      ).map(t=>t.id)
+    );
 
   if(error){
     summaryEl.innerHTML=''; chartEl.innerHTML='';
@@ -2187,23 +2193,28 @@ async function getOrCreateWarung(userId){
 }
 
 async function loadAllData(){
-  // BARANG + BATCHES (FIFO, urut lama->baru)
+  // 1. BARANG + BATCHES
   const {data:barangData,error:be}=await sb
     .from('barang').select('*, batches(*)')
     .eq('warung_id',S.warungId).order('created_at');
-  if(be) console.error(be);
+  if(be) throw new Error('Load barang: '+be.message);
   S.barang=(barangData||[]).map(b=>({
     id:b.id, nama:b.nama, kategori:b.kategori, hargaJual:Number(b.harga_jual),
     minStok:b.min_stok, leadTime:b.lead_time,
-    batches:(b.batches||[]).map(bt=>({id:bt.id,qty:bt.qty,hargaBeli:Number(bt.harga_beli),ts:new Date(bt.created_at).getTime()})).sort((x,y)=>x.ts-y.ts),
+    batches:(b.batches||[])
+      .map(bt=>({id:bt.id,qty:bt.qty,hargaBeli:Number(bt.harga_beli),ts:new Date(bt.created_at).getTime()}))
+      .sort((x,y)=>x.ts-y.ts),
     soldHistory:[]
   }));
 
-  // SOLD HISTORY 30 HARI (buat DOI)
+  // 2. SOLD HISTORY 30 HARI (untuk DOI) — query dari transactions dulu, baru ambil items
   const since=new Date(Date.now()-30*86400000).toISOString();
-  const {data:histTx}=await sb
-    .from('transactions').select('created_at, transaction_items(barang_id, qty)')
-    .eq('warung_id',S.warungId).gte('created_at',since);
+  const {data:histTx,error:hte}=await sb
+    .from('transactions')
+    .select('created_at, transaction_items(barang_id, qty)')
+    .eq('warung_id',S.warungId)
+    .gte('created_at',since);
+  if(hte) console.warn('sold history:', hte.message);
   (histTx||[]).forEach(t=>{
     const ts=new Date(t.created_at).getTime();
     (t.transaction_items||[]).forEach(it=>{
@@ -2212,45 +2223,71 @@ async function loadAllData(){
     });
   });
 
-  // TRANSAKSI HARI INI
+  // 3. TRANSAKSI HARI INI
   const todayStart=new Date(); todayStart.setHours(0,0,0,0);
-  const {data:txToday}=await sb
-    .from('transactions').select('total, hpp, payment_method, created_at, transaction_items(qty)')
-    .eq('warung_id',S.warungId).gte('created_at',todayStart.toISOString())
+  const {data:txToday,error:tte}=await sb
+    .from('transactions')
+    .select('total, hpp, payment_method, created_at, transaction_items(qty)')
+    .eq('warung_id',S.warungId)
+    .gte('created_at',todayStart.toISOString())
     .order('created_at',{ascending:false});
+  if(tte) console.warn('tx today:', tte.message);
   S.transactions=(txToday||[]).map(t=>({
     total:Number(t.total), hpp:Number(t.hpp), payment:t.payment_method,
     ts:new Date(t.created_at).getTime(),
     items:(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0)
   }));
 
-  // KERUGIAN HARI INI (buat dashboard)
-  const {data:lossToday}=await sb
+  // 4. KERUGIAN HARI INI
+  const {data:lossToday,error:lte}=await sb
     .from('losses').select('nilai, created_at')
-    .eq('warung_id',S.warungId).gte('created_at',todayStart.toISOString());
+    .eq('warung_id',S.warungId)
+    .gte('created_at',todayStart.toISOString());
+  if(lte) console.warn('loss today:', lte.message);
   S.lossesToday=(lossToday||[]).map(l=>({nilai:Number(l.nilai),ts:new Date(l.created_at).getTime()}));
 
-  // RIWAYAT KERUGIAN (10 terakhir, semua waktu)
-  const {data:lossRecent}=await sb
+  // 5. RIWAYAT KERUGIAN (10 terakhir)
+  const {data:lossRecent,error:lre}=await sb
     .from('losses').select('*, barang(nama)')
-    .eq('warung_id',S.warungId).order('created_at',{ascending:false}).limit(10);
+    .eq('warung_id',S.warungId)
+    .order('created_at',{ascending:false}).limit(10);
+  if(lre) console.warn('loss recent:', lre.message);
   S.losses=(lossRecent||[]).map(l=>({
-    nama:l.barang?.nama||'(barang dihapus)', jenis:l.jenis, qty:l.qty, nilai:Number(l.nilai), note:l.note, ts:new Date(l.created_at).getTime()
+    nama:l.barang?.nama||'(barang dihapus)', jenis:l.jenis,
+    qty:l.qty, nilai:Number(l.nilai), note:l.note,
+    ts:new Date(l.created_at).getTime()
   }));
 
-  // RIWAYAT BELANJA (10 terakhir)
-  const {data:purchRecent}=await sb
-    .from('batches').select('id, qty, harga_beli, supplier, created_at, barang!inner(nama, warung_id)')
-    .eq('barang.warung_id',S.warungId).order('created_at',{ascending:false}).limit(10);
-  S.purchases=(purchRecent||[]).map(p=>({
-    nama:p.barang?.nama||'', qty:p.qty, hargaBeli:Number(p.harga_beli), supplier:p.supplier, ts:new Date(p.created_at).getTime()
-  }));
+  // 6. RIWAYAT BELANJA — ambil dari batches yang barang-nya milik warung ini
+  // Gunakan barang IDs yang udah di-load (lebih aman dari !inner join)
+  const barangIds=S.barang.map(b=>b.id);
+  if(barangIds.length>0){
+    const {data:purchRecent,error:pre}=await sb
+      .from('batches')
+      .select('id, qty, harga_beli, supplier, created_at, barang(nama)')
+      .in('barang_id', barangIds)
+      .order('created_at',{ascending:false}).limit(10);
+    if(pre) console.warn('purchases:', pre.message);
+    S.purchases=(purchRecent||[]).map(p=>({
+      nama:p.barang?.nama||'', qty:p.qty,
+      hargaBeli:Number(p.harga_beli), supplier:p.supplier,
+      ts:new Date(p.created_at).getTime()
+    }));
+  } else {
+    S.purchases=[];
+  }
 
-  // OPNAME TERAKHIR
-  const {data:lastOpname}=await sb
+  // 7. OPNAME TERAKHIR
+  const {data:lastOpname,error:oe}=await sb
     .from('opnames').select('*')
-    .eq('warung_id',S.warungId).order('created_at',{ascending:false}).limit(1);
-  S.opnames=(lastOpname||[]).map(o=>({ts:new Date(o.created_at).getTime(),akurasi:Number(o.akurasi),count:o.jumlah_sku}));
+    .eq('warung_id',S.warungId)
+    .order('created_at',{ascending:false}).limit(1);
+  if(oe) console.warn('opname:', oe.message);
+  S.opnames=(lastOpname||[]).map(o=>({
+    ts:new Date(o.created_at).getTime(),
+    akurasi:Number(o.akurasi),
+    count:o.jumlah_sku
+  }));
 }
 
 let authHandled=false;
