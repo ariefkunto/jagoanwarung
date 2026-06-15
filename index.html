@@ -1508,7 +1508,7 @@ async function afterLogin(user){
   showLoading();
   S.userEmail=user.email||'';
   const warung=await getOrCreateWarung(user.id);
-  if(!warung){ hideLoading(); showToast('Gagal memuat warung'); showLogin(); authHandled=false; return; }
+  if(!warung){ hideLoading(); showLogin(); authHandled=false; return; }
   S.warungId=warung.id;
   S.namaWarung=warung.nama_warung||'Warung Saya';
   await loadAllData();
