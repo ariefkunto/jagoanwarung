@@ -207,6 +207,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* LEGEND */
 .legend-line{font-size:11px;color:var(--text2);line-height:2;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 
+/* SKU AUTOCOMPLETE */
+.sku-dropdown{position:absolute;left:0;right:0;top:100%;background:var(--bg);border:1.5px solid var(--brand);border-radius:0 0 var(--r8) var(--r8);max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.sku-item{padding:10px 12px;cursor:pointer;font-size:14px;color:var(--text);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.sku-item:last-child{border-bottom:none}
+.sku-item:active,.sku-item:hover{background:var(--bg2)}
+.sku-item-kat{font-size:11px;color:var(--text2)}
+.sku-wrap{position:relative}
+
 /* LOGIN SCREEN */
 #loginScreen{display:none;position:fixed;inset:0;z-index:300;background:var(--bg3);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
 
@@ -390,6 +398,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="tag-row" id="paymentTags">
         <div class="tag active" onclick="pilihPayment(this,'Cash')"><i class="ti ti-cash" style="margin-right:4px"></i>Cash</div>
         <div class="tag" onclick="pilihPayment(this,'QRIS')"><i class="ti ti-qrcode" style="margin-right:4px"></i>QRIS</div>
+        <div class="tag" onclick="pilihPayment(this,'Transfer')"><i class="ti ti-building-bank" style="margin-right:4px"></i>Transfer</div>
+        <div class="tag" onclick="pilihPayment(this,'Lainnya')"><i class="ti ti-dots" style="margin-right:4px"></i>Lainnya</div>
       </div>
     </div>
 
@@ -588,7 +598,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="modal">
     <i class="ti ti-x modal-close" onclick="closeOverlay('modalBarang')"></i>
     <div class="modal-title" id="modalBarangTitle">Tambah Barang</div>
-    <div class="inp-group"><label>Nama barang *</label><input type="text" id="mNama" placeholder="cth: Indomie Goreng"></div>
+    <div class="inp-group">
+      <label>Nama barang *</label>
+      <div class="sku-wrap">
+        <input type="text" id="mNama" placeholder="Ketik nama barang..." autocomplete="off"
+          oninput="skuSearch(this.value)" onfocus="skuSearch(this.value)">
+        <div class="sku-dropdown" id="skuDropdown" style="display:none"></div>
+      </div>
+    </div>
     <div class="inp-group"><label>Kategori</label>
       <select id="mKategori">
         <option>Makanan</option><option>Minuman</option><option>Rokok</option>
@@ -673,6 +690,186 @@ const TRENDING_PRODUCTS = [
   {nama:'Mie Snack Anak Mas Ayam Geprek', kategori:'Makanan', alasan:'Snack mie kering nostalgia, target anak-anak, repeat buy tinggi'},
   {nama:'Yakult Mix Jelly', kategori:'Minuman', alasan:'Tren minuman segar kekinian, modal ringan & margin menarik'},
   {nama:'Pop Mie Snek', kategori:'Makanan', alasan:'Snack ringan kemasan aman (non-styrofoam), cocok jajanan sekolah'},
+];
+
+// ═══════════════════════════════════════════════════
+// DATABASE SKU PASARAN WARUNG INDONESIA
+// Dipakai untuk autocomplete di Master Barang
+// ═══════════════════════════════════════════════════
+const SKU_DB = [
+  // ── MIE INSTAN ──
+  {nama:'Indomie Goreng',                     kat:'Makanan'},
+  {nama:'Indomie Goreng Rendang',              kat:'Makanan'},
+  {nama:'Indomie Goreng Aceh',                 kat:'Makanan'},
+  {nama:'Indomie Goreng Geprek',               kat:'Makanan'},
+  {nama:'Indomie Goreng BBQ Chicken',          kat:'Makanan'},
+  {nama:'Indomie Rasa Soto Ayam',              kat:'Makanan'},
+  {nama:'Indomie Rasa Ayam Bawang',            kat:'Makanan'},
+  {nama:'Indomie Rasa Kari Ayam',              kat:'Makanan'},
+  {nama:'Indomie Rasa Baso Sapi',              kat:'Makanan'},
+  {nama:'Indomie Rasa Kaldu Ayam',             kat:'Makanan'},
+  {nama:'Indomie Rasa Coto Makassar',          kat:'Makanan'},
+  {nama:'Mie Sedaap Goreng Original',          kat:'Makanan'},
+  {nama:'Mie Sedaap Goreng Sambal Goreng',     kat:'Makanan'},
+  {nama:'Mie Sedaap Rasa Soto',                kat:'Makanan'},
+  {nama:'Mie Sedaap Rasa Baso',                kat:'Makanan'},
+  {nama:'Mie Sedaap Rasa Kari Spesial',        kat:'Makanan'},
+  {nama:'Supermi Goreng Spesial',              kat:'Makanan'},
+  {nama:'Supermi Rasa Ayam Bawang',            kat:'Makanan'},
+  {nama:'Sarimi Rasa Soto Koya',               kat:'Makanan'},
+  {nama:'Sarimi Rasa Baso Sapi',               kat:'Makanan'},
+  {nama:'Pop Mie Goreng',                      kat:'Makanan'},
+  {nama:'Pop Mie Rasa Soto Ayam',              kat:'Makanan'},
+  {nama:'Pop Mie Rasa Baso',                   kat:'Makanan'},
+  {nama:'Mie ABC Rasa Ayam',                   kat:'Makanan'},
+  {nama:'Alhami Rasa Ayam',                    kat:'Makanan'},
+  {nama:'Lemonilo Mie Goreng',                 kat:'Makanan'},
+
+  // ── SNACK & BISKUIT ──
+  {nama:'Chitato Rasa Sapi Panggang',          kat:'Makanan'},
+  {nama:'Chitato Rasa Jagung Bakar',           kat:'Makanan'},
+  {nama:'Chitato Rasa Pedas',                  kat:'Makanan'},
+  {nama:'Piattos Rasa Keju',                   kat:'Makanan'},
+  {nama:'Piattos Rasa Rumput Laut',            kat:'Makanan'},
+  {nama:'Cheetos Rasa Jagung Bakar',           kat:'Makanan'},
+  {nama:'Cheetos Rasa Keju',                   kat:'Makanan'},
+  {nama:'Taro Rasa Original',                  kat:'Makanan'},
+  {nama:'Taro Rasa BBQ',                       kat:'Makanan'},
+  {nama:'Qtela Rasa Keju',                     kat:'Makanan'},
+  {nama:'Qtela Rasa Balado',                   kat:'Makanan'},
+  {nama:'Oreo Original',                       kat:'Makanan'},
+  {nama:'Oreo Rasa Coklat',                    kat:'Makanan'},
+  {nama:'Roma Kelapa',                         kat:'Makanan'},
+  {nama:'Roma Marie Susu',                     kat:'Makanan'},
+  {nama:'Khong Guan Assorted',                 kat:'Makanan'},
+  {nama:'Good Time Cookies',                   kat:'Makanan'},
+  {nama:'Richeese Nabati',                     kat:'Makanan'},
+  {nama:'Beng Beng',                           kat:'Makanan'},
+  {nama:'Silverqueen Chunky Bar',              kat:'Makanan'},
+  {nama:'Silverqueen Caramel',                 kat:'Makanan'},
+  {nama:'Kopiko Candy',                        kat:'Makanan'},
+  {nama:'Relaxa Candy',                        kat:'Makanan'},
+  {nama:'Kis Candy Mint',                      kat:'Makanan'},
+  {nama:'Yupi Candy',                          kat:'Makanan'},
+  {nama:'Chiki Snack Bola-Bola',               kat:'Makanan'},
+  {nama:'Happy Tos Original',                  kat:'Makanan'},
+  {nama:'Kripik Singkong Cap Cabe',            kat:'Makanan'},
+
+  // ── MAKANAN KALENG & INSTAN ──
+  {nama:'Sarden ABC Saus Tomat',               kat:'Makanan'},
+  {nama:'Sarden Botan Saus Pedas',             kat:'Makanan'},
+  {nama:'Abon Ayam Cap Sapi',                  kat:'Makanan'},
+  {nama:'Kecap Manis ABC 135ml',               kat:'Makanan'},
+  {nama:'Kecap Manis Bango 135ml',             kat:'Makanan'},
+  {nama:'Saos Sambal ABC Botol',               kat:'Makanan'},
+  {nama:'Saos Sambal Del Monte',               kat:'Makanan'},
+  {nama:'Bumbu Racik Royco Ayam',              kat:'Makanan'},
+  {nama:'Bumbu Racik Royco Sapi',              kat:'Makanan'},
+  {nama:'Masako Ayam Sachet',                  kat:'Makanan'},
+  {nama:'Masako Sapi Sachet',                  kat:'Makanan'},
+  {nama:'Minyak Bimoli 1L Refill',             kat:'Makanan'},
+  {nama:'Minyak Sania 1L Pouch',               kat:'Makanan'},
+  {nama:'Gula Pasir 1kg',                      kat:'Makanan'},
+  {nama:'Gula Pasir 500gr',                    kat:'Makanan'},
+  {nama:'Beras Premium 5kg',                   kat:'Makanan'},
+  {nama:'Tepung Terigu Segitiga Biru 1kg',     kat:'Makanan'},
+  {nama:'Kopi ABC Susu',                       kat:'Makanan'},
+  {nama:'Kopi Kapal Api Sachet',               kat:'Makanan'},
+  {nama:'Kopi Nescafe Classic Sachet',         kat:'Makanan'},
+  {nama:'Good Day Cappuccino',                 kat:'Makanan'},
+  {nama:'Susu Bendera Coklat Sachet',          kat:'Makanan'},
+  {nama:'Susu Frisian Flag Sachet',            kat:'Makanan'},
+  {nama:'Susu Indomilk Sachet',                kat:'Makanan'},
+  {nama:'Milo Sachet',                         kat:'Makanan'},
+  {nama:'Ovomaltine Sachet',                   kat:'Makanan'},
+  {nama:'Energen Rasa Coklat',                 kat:'Makanan'},
+
+  // ── MINUMAN KEMASAN ──
+  {nama:'Aqua 600ml',                          kat:'Minuman'},
+  {nama:'Aqua 1500ml',                         kat:'Minuman'},
+  {nama:'Aqua 330ml Cup',                      kat:'Minuman'},
+  {nama:'Le Minerale 600ml',                   kat:'Minuman'},
+  {nama:'Club 600ml',                          kat:'Minuman'},
+  {nama:'Ades 600ml',                          kat:'Minuman'},
+  {nama:'Teh Pucuk 350ml',                     kat:'Minuman'},
+  {nama:'Teh Pucuk 500ml',                     kat:'Minuman'},
+  {nama:'Teh Botol Sosro 450ml',               kat:'Minuman'},
+  {nama:'Teh Botol Sosro 250ml',               kat:'Minuman'},
+  {nama:'Teh Gelas 200ml',                     kat:'Minuman'},
+  {nama:'Frestea Green 350ml',                 kat:'Minuman'},
+  {nama:'Nu Green Tea 330ml',                  kat:'Minuman'},
+  {nama:'Ichitan Thai Tea 310ml',              kat:'Minuman'},
+  {nama:'Ultra Milk Coklat 200ml',             kat:'Minuman'},
+  {nama:'Ultra Milk Full Cream 200ml',         kat:'Minuman'},
+  {nama:'Milo RTD 200ml',                      kat:'Minuman'},
+  {nama:'Indomilk Coklat 200ml',               kat:'Minuman'},
+  {nama:'Yakult 65ml',                         kat:'Minuman'},
+  {nama:'Pocari Sweat 500ml',                  kat:'Minuman'},
+  {nama:'Pocari Sweat 350ml',                  kat:'Minuman'},
+  {nama:'Mizone 500ml',                        kat:'Minuman'},
+  {nama:'Isotonic 8 500ml',                    kat:'Minuman'},
+  {nama:'Mountea 230ml',                       kat:'Minuman'},
+  {nama:'Floridina Jeruk 350ml',               kat:'Minuman'},
+  {nama:'Fanta Strawberry 390ml',              kat:'Minuman'},
+  {nama:'Sprite 390ml',                        kat:'Minuman'},
+  {nama:'Coca-Cola 390ml',                     kat:'Minuman'},
+  {nama:'Pepsi 390ml',                         kat:'Minuman'},
+  {nama:'Soda Water Badak 1L',                 kat:'Minuman'},
+  {nama:'Kratingdaeng 150ml',                  kat:'Minuman'},
+  {nama:'Extra Joss Sachet',                   kat:'Minuman'},
+  {nama:'Hemaviton Jreng Sachet',              kat:'Minuman'},
+  {nama:'Kuku Bima Ener-G Sachet',             kat:'Minuman'},
+  {nama:'You C1000 Vitamin C 140ml',           kat:'Minuman'},
+  {nama:'Vitamin Water 500ml',                 kat:'Minuman'},
+  {nama:'Marimas Sachet Jeruk',                kat:'Minuman'},
+  {nama:'Marimas Sachet Melon',                kat:'Minuman'},
+
+  // ── ROKOK ──
+  {nama:'Rokok Gudang Garam Surya 12',         kat:'Rokok'},
+  {nama:'Rokok Gudang Garam Merah',            kat:'Rokok'},
+  {nama:'Rokok Gudang Garam International',    kat:'Rokok'},
+  {nama:'Rokok Sampoerna Mild 16',             kat:'Rokok'},
+  {nama:'Rokok Sampoerna Mild 12',             kat:'Rokok'},
+  {nama:'Rokok Sampoerna Kretek',              kat:'Rokok'},
+  {nama:'Rokok Dji Sam Soe 234',               kat:'Rokok'},
+  {nama:'Rokok Dji Sam Soe Magnum',            kat:'Rokok'},
+  {nama:'Rokok Marlboro Red',                  kat:'Rokok'},
+  {nama:'Rokok Marlboro Black',                kat:'Rokok'},
+  {nama:'Rokok Camel Filter',                  kat:'Rokok'},
+  {nama:'Rokok U Mild 16',                     kat:'Rokok'},
+  {nama:'Rokok L.A. Bold',                     kat:'Rokok'},
+  {nama:'Rokok Esse Change',                   kat:'Rokok'},
+  {nama:'Rokok Class Mild',                    kat:'Rokok'},
+
+  // ── KEBUTUHAN RUMAH ──
+  {nama:'Sabun Lifebuoy Batangan',             kat:'Kebutuhan Rumah'},
+  {nama:'Sabun Lux Batangan',                  kat:'Kebutuhan Rumah'},
+  {nama:'Sabun Cair Lifebuoy 250ml',           kat:'Kebutuhan Rumah'},
+  {nama:'Sabun Cuci Piring Sunlight Sachet',   kat:'Kebutuhan Rumah'},
+  {nama:'Shampo Pantene Sachet',               kat:'Kebutuhan Rumah'},
+  {nama:'Shampo Clear Sachet',                 kat:'Kebutuhan Rumah'},
+  {nama:'Shampo Rejoice Sachet',               kat:'Kebutuhan Rumah'},
+  {nama:'Shampo Sunsilk Sachet',               kat:'Kebutuhan Rumah'},
+  {nama:"Sabun Muka Pond's Sachet",            kat:'Kebutuhan Rumah'},
+  {nama:'Pasta Gigi Pepsodent 75gr',           kat:'Kebutuhan Rumah'},
+  {nama:'Pasta Gigi Ciptadent Sachet',         kat:'Kebutuhan Rumah'},
+  {nama:'Sikat Gigi Formula',                  kat:'Kebutuhan Rumah'},
+  {nama:'Pembalut Charm Regular',              kat:'Kebutuhan Rumah'},
+  {nama:'Pembalut Laurier Sachet',             kat:'Kebutuhan Rumah'},
+  {nama:'Popok Pampers S',                     kat:'Kebutuhan Rumah'},
+  {nama:'Popok Mamypoko M',                    kat:'Kebutuhan Rumah'},
+  {nama:'Detergent Rinso Sachet',              kat:'Kebutuhan Rumah'},
+  {nama:'Detergent Attack Sachet',             kat:'Kebutuhan Rumah'},
+  {nama:'Molto Pelembut Sachet',               kat:'Kebutuhan Rumah'},
+  {nama:'Baygon Semprot',                      kat:'Kebutuhan Rumah'},
+  {nama:'Batu Baterai ABC AA',                 kat:'Kebutuhan Rumah'},
+  {nama:'Batu Baterai ABC AAA',                kat:'Kebutuhan Rumah'},
+  {nama:'Korek Api Gas',                       kat:'Kebutuhan Rumah'},
+  {nama:'Tisu Paseo 250 Sheet',                kat:'Kebutuhan Rumah'},
+  {nama:'Tisu Paseo Pocket',                   kat:'Kebutuhan Rumah'},
+  {nama:'Kantong Plastik Kresek S',            kat:'Kebutuhan Rumah'},
+  {nama:'Kantong Plastik Kresek M',            kat:'Kebutuhan Rumah'},
+  {nama:'Kantong Plastik Kresek L',            kat:'Kebutuhan Rumah'},
 ];
 
 function stok(b){ return b.batches.reduce((s,bt)=>s+bt.qty,0); }
@@ -771,7 +968,7 @@ function goScreen(s){
     belanja: populateBelanja,
     kerugian: populateKerugian,
     opname: renderOpname,
-    restock: renderRestock,
+    restock: ()=>{ renderRestock(); loadAbcAnalysis(); },
     notif: renderNotif,
   };
   if(renders[s]) renders[s]();
@@ -862,7 +1059,7 @@ function renderDashboard(){
     : '<div class="empty" style="padding:12px"><i class="ti ti-check"></i>Tidak ada rekomendasi</div>';
 
   // TX list
-  const payIcon = {Cash:'ti-cash', QRIS:'ti-qrcode'};
+  const payIcon = {Cash:'ti-cash', QRIS:'ti-qrcode', Transfer:'ti-building-bank', Lainnya:'ti-dots'};
   document.getElementById('txList').innerHTML = todayTx.length
     ? todayTx.slice(0,20).map(t=>`
       <div class="ledger-item">
@@ -907,6 +1104,8 @@ function updatePeriodLabel(){
   if(S.period==='today') txt=labels.today+' ('+fmtDateShort(from)+')';
   else txt=labels[S.period]+' ('+fmtDateShort(from)+' – '+fmtDateShort(to)+')';
   document.getElementById('periodLabel').textContent='Menampilkan: '+txt;
+  const abcLbl=document.getElementById('abcPeriodLabel');
+  if(abcLbl) abcLbl.textContent='Berdasarkan: '+txt;
 }
 async function loadPeriodData(){
   const {from,to}=getPeriodRange();
@@ -932,6 +1131,8 @@ async function loadPeriodData(){
   S.lossesToday=(lossData||[]).map(l=>({nilai:Number(l.nilai),ts:new Date(l.created_at).getTime()}));
 
   renderDashboard();
+  // Kalau user lagi di screen restock, refresh ABC juga
+  if(document.getElementById('screen-restock').classList.contains('active')) loadAbcAnalysis();
 }
 function setPeriod(p,el){
   document.querySelectorAll('#periodTags .tag').forEach(t=>t.classList.remove('active'));
@@ -1134,6 +1335,27 @@ function editBarang(id){
   document.getElementById('mLeadTime').value=b.leadTime;
   closeOverlay('modalDetail'); openOverlay('modalBarang');
 }
+function skuSearch(q){
+  const dd=document.getElementById('skuDropdown');
+  if(!q||q.length<2){dd.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const results=SKU_DB.filter(s=>s.nama.toLowerCase().includes(ql)).slice(0,8);
+  if(!results.length){dd.style.display='none';return;}
+  dd.innerHTML=results.map(s=>
+    `<div class="sku-item" onmousedown="skuPick('${s.nama.replace(/'/g,"\\'")}','${s.kat}')">
+      <span>${s.nama.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<b>$1</b>')}</span>
+      <span class="sku-item-kat">${s.kat}</span>
+    </div>`
+  ).join('');
+  dd.style.display='block';
+}
+function skuPick(nama,kat){
+  document.getElementById('mNama').value=nama;
+  document.getElementById('mKategori').value=kat;
+  document.getElementById('skuDropdown').style.display='none';
+  document.getElementById('mHargaJual').focus();
+}
+
 async function hapusBarang(id){
   if(!confirm('Yakin hapus barang ini? Data batch & riwayat akan ikut terhapus.')) return;
   const {error}=await sb.from('barang').delete().eq('id',id);
@@ -1249,7 +1471,7 @@ function prosesJual(){
   const totalSell=S.cart.reduce((s,c)=>{const b=S.barang.find(x=>x.id===c.id);return s+(b?b.hargaJual*c.qty:0);},0);
   const totalHpp=S.cart.reduce((s,c)=>{const b=S.barang.find(x=>x.id===c.id);return s+(b?fifoHpp(b,c.qty):0);},0);
   const items=S.cart.reduce((s,c)=>s+c.qty,0);
-  const payIcon={Cash:'ti-cash',QRIS:'ti-qrcode'};
+  const payIcon={Cash:'ti-cash',QRIS:'ti-qrcode',Transfer:'ti-building-bank',Lainnya:'ti-dots'};
   document.getElementById('konfirmasiContent').innerHTML=`
     <div class="info-row"><span class="info-label">Jumlah item</span><span>${items} pcs</span></div>
     <div class="info-row"><span class="info-label">Metode pembayaran</span><span style="font-weight:600"><i class="ti ${payIcon[S.paymentMethod]}" style="margin-right:4px"></i>${S.paymentMethod}</span></div>
@@ -1743,6 +1965,12 @@ async function afterLogin(user){
 // ═══════════════════════════════════════
 document.getElementById('dashDate').textContent =
   new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+// Tutup SKU dropdown saat klik di luar
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('skuDropdown');
+  if(dd && !dd.contains(e.target) && e.target.id!=='mNama') dd.style.display='none';
+});
 
 if(!sb){
   hideLoading();
