@@ -2259,16 +2259,24 @@ async function afterLogin(user){
   if(authHandled) return;
   authHandled=true;
   showLoading();
-  S.userEmail=user.email||'';
-  const warung=await getOrCreateWarung(user.id);
-  if(!warung){ hideLoading(); showLogin(); authHandled=false; return; }
-  S.warungId=warung.id;
-  S.namaWarung=warung.nama_warung||'Warung Saya';
-  await loadAllData();
-  hideLoading();
-  hideLogin();
-  goScreen('dashboard');
-  updatePeriodLabel();
+  try {
+    S.userEmail=user.email||'';
+    const warung=await getOrCreateWarung(user.id);
+    if(!warung){ hideLoading(); showLogin(); authHandled=false; return; }
+    S.warungId=warung.id;
+    S.namaWarung=warung.nama_warung||'Warung Saya';
+    await loadAllData();
+    hideLoading();
+    hideLogin();
+    goScreen('dashboard');
+    updatePeriodLabel();
+  } catch(e) {
+    console.error('afterLogin error:', e);
+    hideLoading();
+    showToast('Gagal masuk: '+(e?.message||String(e)), 6000);
+    showLogin();
+    authHandled=false;
+  }
 }
 
 // ═══════════════════════════════════════
@@ -2277,7 +2285,6 @@ async function afterLogin(user){
 document.getElementById('dashDate').textContent =
   new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-// Tutup SKU dropdown saat klik di luar
 document.addEventListener('click',e=>{
   const dd=document.getElementById('skuDropdown');
   if(dd && !dd.contains(e.target) && e.target.id!=='mNama') dd.style.display='none';
@@ -2296,21 +2303,17 @@ if(!sb){
 } else {
   showLoading();
   sb.auth.onAuthStateChange((event,session)=>{
-    if(session && (event==='SIGNED_IN' || event==='INITIAL_SESSION')){
-      afterLogin(session.user).catch(e=>{
-        console.error(e);
-        hideLoading();
-        showToast('Error: '+(e?.message||String(e)), 5000);
-        showLogin();
-        authHandled=false;
-      });
+    console.log('auth:', event, !!session);
+    if(event==='INITIAL_SESSION'){
+      if(session) afterLogin(session.user);
+      else { hideLoading(); showLogin(); }
+    } else if(event==='SIGNED_IN' && !authHandled){
+      afterLogin(session.user);
     } else if(event==='SIGNED_OUT'){
       authHandled=false;
-      hideLoading();
-      showLogin();
-    } else if(event==='INITIAL_SESSION' && !session){
-      hideLoading();
-      showLogin();
+      S.warungId=null; S.barang=[]; S.transactions=[]; S.losses=[];
+      S.lossesToday=[]; S.purchases=[]; S.opnames=[]; S.cart=[];
+      hideLoading(); showLogin();
     }
   });
 }
