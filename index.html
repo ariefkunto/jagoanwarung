@@ -1371,8 +1371,21 @@ function renderNotif(){
 // ═══════════════════════════════════════
 function showLogin(){ document.getElementById('loginScreen').style.display='flex'; }
 function hideLogin(){ document.getElementById('loginScreen').style.display='none'; }
-function showLoading(){ document.getElementById('loadingOverlay').style.display='flex'; }
-function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
+let loadingTimeout=null;
+function showLoading(){
+  document.getElementById('loadingOverlay').style.display='flex';
+  clearTimeout(loadingTimeout);
+  loadingTimeout=setTimeout(()=>{
+    hideLoading();
+    showToast('Timeout: gagal konek ke server. Coba refresh.',4000);
+    showLogin();
+    authHandled=false;
+  },15000);
+}
+function hideLoading(){
+  document.getElementById('loadingOverlay').style.display='none';
+  clearTimeout(loadingTimeout);
+}
 
 async function loginWithGoogle(){
   const {error}=await sb.auth.signInWithOAuth({
@@ -1518,7 +1531,13 @@ if(!sb){
   showLoading();
   sb.auth.onAuthStateChange((event,session)=>{
     if(session && (event==='SIGNED_IN' || event==='INITIAL_SESSION')){
-      afterLogin(session.user);
+      afterLogin(session.user).catch(e=>{
+        console.error(e);
+        hideLoading();
+        showToast('Error: '+(e?.message||String(e)), 5000);
+        showLogin();
+        authHandled=false;
+      });
     } else if(event==='SIGNED_OUT'){
       authHandled=false;
       hideLoading();
