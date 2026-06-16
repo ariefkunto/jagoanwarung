@@ -335,13 +335,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div style="font-size:56px;margin-bottom:16px">🔒</div>
   <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">Akses Berakhir</div>
   <div style="font-size:13px;color:var(--text2);max-width:280px;line-height:1.7;margin-bottom:28px" id="expiredMsg">
-    Masa trial lo sudah habis. Upgrade ke <b>Jagoan Warung Lengkap</b> untuk tetap akses semua fitur.
+    Masa trial Anda sudah habis. Upgrade ke <b>Jagoan Warung Lengkap</b> untuk tetap akses semua fitur.
   </div>
 
   <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r16);padding:20px;max-width:300px;width:100%;margin-bottom:24px;text-align:left">
     <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">Jagoan Warung Lengkap</div>
     <div style="font-size:32px;font-weight:800;color:var(--brand);margin-bottom:4px">Rp 99.000<span style="font-size:14px;font-weight:400;color:var(--text2)">/bulan</span></div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:14px">= 3 bungkus rokok per bulan</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px">= setara 3 bungkus rokok per bulan</div>
     <div style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--text)">
       <div>✓ Semua fitur tanpa batas</div>
       <div>✓ FIFO + ABC Analysis</div>
@@ -389,7 +389,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- ══════════════ DASHBOARD ══════════════ -->
 <div class="screen active" id="screen-dashboard">
   <div class="welcome">
-    <div class="welcome-greeting" id="greetingText">Halo, Juragan 👋</div>
+    <div class="welcome-greeting" id="greetingText">Halo, Juragan! 👋</div>
     <div class="welcome-date" id="dashDate"></div>
   </div>
   <div id="trialBanner"></div>
@@ -750,6 +750,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="tag" onclick="setLogPeriod('month',this)">Bulan ini</div>
       </div>
     </div>
+    <button class="btn" onclick="exportLogExcel()"><i class="ti ti-file-spreadsheet"></i>Export Log ke Excel</button>
     <div class="card" style="padding:8px 14px">
       <div id="logList"><div class="empty"><i class="ti ti-activity"></i>Memuat aktivitas...</div></div>
     </div>
@@ -876,7 +877,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <i class="ti ti-x modal-close" onclick="closeOverlay('modalWarung')"></i>
     <div class="modal-title">Profil Warung</div>
     <div class="inp-group"><label>Nama warung</label><input type="text" id="wNamaWarung" placeholder="Warung Saya"></div>
-    <div style="font-size:12px;color:var(--text2)">Login sebagai: <span id="wEmail" style="font-weight:600;color:var(--text)"></span></div>
+    <div style="font-size:12px;color:var(--text2)">Masuk sebagai: <span id="wEmail" style="font-weight:600;color:var(--text)"></span></div>
     <button class="btn primary" onclick="saveWarungName()"><i class="ti ti-check"></i>Simpan</button>
     <div class="divider"></div>
     <button class="btn" onclick="closeOverlay('modalWarung');resetOnboarding()"><i class="ti ti-settings"></i>Ulangi Setup Warung</button>
@@ -890,6 +891,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <i class="ti ti-x modal-close" onclick="closeOverlay('modalSuspended')"></i>
     <div class="modal-title">Transaksi Tertahan</div>
     <div id="suspendedList"><div class="empty"><i class="ti ti-player-pause"></i>Tidak ada transaksi tertahan</div></div>
+  </div>
+</div>
+
+<!-- SO Report -->
+<div class="overlay" id="modalSOReport">
+  <div class="modal" style="max-height:90vh">
+    <i class="ti ti-x modal-close" onclick="closeOverlay('modalSOReport')"></i>
+    <div class="modal-title">Hasil Stock Opname</div>
+    <div id="soReportContent"></div>
+    <button class="btn" onclick="closeOverlay('modalSOReport')" style="margin-top:4px">Tutup</button>
+  </div>
+</div>
+
+<!-- Koreksi Stok Cepat -->
+<div class="overlay" id="modalKoreksiStok">
+  <div class="modal">
+    <i class="ti ti-x modal-close" onclick="closeOverlay('modalKoreksiStok')"></i>
+    <div class="modal-title">Koreksi Stok</div>
+    <div id="koreksiInfo" style="font-size:13px;color:var(--text2);margin-bottom:10px"></div>
+    <div class="inp-group">
+      <label>Stok yang benar (pcs)</label>
+      <input type="number" id="koreksiStokBaru" placeholder="0" min="0">
+    </div>
+    <div class="inp-group">
+      <label>Alasan koreksi</label>
+      <input type="text" id="koreksiAlasan" placeholder="cth: salah input belanja, hitung ulang fisik">
+    </div>
+    <div id="koreksiPreview" style="display:none;background:var(--blue-bg);border-radius:var(--r8);padding:10px 12px;font-size:12px;color:var(--blue);margin-top:4px"></div>
+    <button class="btn primary" onclick="simpanKoreksiStok()"><i class="ti ti-check"></i>Simpan Koreksi</button>
   </div>
 </div>
 
@@ -1667,7 +1697,8 @@ function openDetail(id){
     <div class="info-row"><span class="info-label">Batch aktif</span><span>${b.batches.length} batch</span></div>
     <div class="btn-row" style="margin-top:14px">
       <button class="btn sm" style="flex:1" onclick="editBarang('${b.id}')"><i class="ti ti-edit"></i>Edit</button>
-      <button class="btn sm" style="flex:1;background:var(--amber-bg);border-color:var(--amber);color:var(--amber)" onclick="hapusBarang('${b.id}')"><i class="ti ti-archive"></i>Arsipkan</button>
+      <button class="btn sm" style="flex:1;background:var(--blue-bg);border-color:var(--blue);color:var(--blue)" onclick="openKoreksiStok('${b.id}')"><i class="ti ti-adjustments"></i>Koreksi</button>
+      <button class="btn sm" style="flex:1;background:var(--amber-bg);border-color:var(--amber);color:var(--amber)" onclick="hapusBarang('${b.id}')"><i class="ti ti-archive"></i>Arsip</button>
     </div>`;
   openOverlay('modalDetail');
 }
@@ -2094,19 +2125,21 @@ function updateOpDiff(id){
 async function prosesOpname(){
   let total=0,match=0;
   const opnameItems=[];
+  const reportRows=[];
   for(const b of S.barang){
     const inp=document.getElementById('op_'+b.id);
     if(!inp||inp.value==='') continue;
     const fisik=+inp.value, sistem=stok(b);
     total++; if(fisik===sistem) match++;
-    opnameItems.push({barang_id:b.id, stok_sistem:sistem, stok_fisik:fisik, selisih:fisik-sistem});
-    const diff=fisik-sistem;
-    if(diff<0){
-      await fifoDeductDB(b,Math.abs(diff));
-    } else if(diff>0){
+    const selisih=fisik-sistem;
+    opnameItems.push({barang_id:b.id, stok_sistem:sistem, stok_fisik:fisik, selisih});
+    reportRows.push({nama:b.nama, sistem, fisik, selisih});
+    if(selisih<0){
+      await fifoDeductDB(b,Math.abs(selisih));
+    } else if(selisih>0){
       const harga=avgHpp(b)||0;
-      const {data,error}=await sb.from('batches').insert({barang_id:b.id, qty:diff, harga_beli:harga}).select().single();
-      if(!error) b.batches.push({id:data.id, qty:diff, hargaBeli:harga, ts:new Date(data.created_at).getTime()});
+      const {data,error}=await sb.from('batches').insert({barang_id:b.id, qty:selisih, harga_beli:harga}).select().single();
+      if(!error) b.batches.push({id:data.id, qty:selisih, hargaBeli:harga, ts:new Date(data.created_at).getTime()});
     }
   }
   const akurasi=total?Math.round(match/total*100):100;
@@ -2117,12 +2150,189 @@ async function prosesOpname(){
   S.opnames=[{ts:Date.now(),akurasi,count:total}];
   logActivity('opname',`Stock Opname selesai · ${total} SKU dihitung · Akurasi ${akurasi}%`);
   renderOpname(); renderDashboard();
-  showToast('Opname selesai! Akurasi stok: '+akurasi+'%');
+  showSOReport(reportRows, akurasi);
 }
 
-// ═══════════════════════════════════════
-// JAGOAN WARUNG / RESTOCK
-// ═══════════════════════════════════════
+async function exportLogExcel(){
+  showToast('Menyiapkan export...',3000);
+  try{ await loadXLSX(); } catch(e){ showToast('Gagal load library Excel');return; }
+  if(typeof XLSX==='undefined'){showToast('Library Excel gagal dimuat');return;}
+
+  const now=new Date();
+  let from,to,periodeLabel;
+  if(LA.period==='today'){
+    from=new Date(now); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+    periodeLabel='Hari ini ('+fmtDateShort(from)+')';
+  } else if(LA.period==='week'){
+    from=new Date(now); from.setDate(from.getDate()-from.getDay()); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+    periodeLabel='Minggu ini ('+fmtDateShort(from)+' – '+fmtDateShort(to)+')';
+  } else {
+    from=new Date(now.getFullYear(),now.getMonth(),1,0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+    periodeLabel='Bulan ini ('+now.toLocaleDateString('id-ID',{month:'long',year:'numeric'})+')';
+  }
+
+  // Ambil semua log di periode ini (tanpa limit 200)
+  const {data,error}=await sb.from('activity_log')
+    .select('*')
+    .eq('warung_id',S.warungId)
+    .gte('created_at',from.toISOString())
+    .lte('created_at',to.toISOString())
+    .order('created_at',{ascending:true}); // ascending untuk audit trail
+
+  if(error){showToast('Gagal ambil data: '+error.message);return;}
+  if(!data?.length){showToast('Tidak ada aktivitas di periode ini');return;}
+
+  const tipeLabel={
+    jual:'Penjualan', belanja:'Belanja Masuk', barang_baru:'Tambah Barang',
+    edit_barang:'Edit Barang', arsip_barang:'Arsip Barang', pulihkan_barang:'Pulihkan Barang',
+    opname:'Stock Opname / Koreksi', kerugian:'Kerugian Inventory', retur:'Retur Customer',
+    void:'Batal Transaksi', suspend:'Suspend Keranjang',
+    export_excel:'Export Excel', export_pdf:'Export PDF',
+  };
+
+  const wb=XLSX.utils.book_new();
+
+  // SHEET 1: LOG AKTIVITAS
+  const rows=[
+    [`Log Aktivitas Warung — ${S.namaWarung}`],
+    [`Periode: ${periodeLabel}`],
+    [`Digenerate: ${new Date().toLocaleString('id-ID')}`],
+    [],
+    ['No','Tanggal','Jam','Tipe Aktivitas','Deskripsi','Nilai (Rp)'],
+  ];
+  data.forEach((log,i)=>{
+    const tgl=new Date(log.created_at);
+    rows.push([
+      i+1,
+      tgl.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
+      tgl.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+      tipeLabel[log.tipe]||log.tipe,
+      log.deskripsi,
+      log.nilai?Number(log.nilai):'',
+    ]);
+  });
+
+  // Summary di bawah
+  rows.push([]);
+  rows.push(['RINGKASAN']);
+  const tipeCount={};
+  data.forEach(l=>{ tipeCount[l.tipe]=(tipeCount[l.tipe]||0)+1; });
+  Object.entries(tipeCount).forEach(([tipe,count])=>{
+    rows.push(['',tipeLabel[tipe]||tipe,'','','Jumlah: '+count]);
+  });
+  rows.push([]);
+  rows.push(['','Total aktivitas tercatat','','','',data.length]);
+
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  // Set column widths
+  ws['!cols']=[{wch:5},{wch:22},{wch:10},{wch:22},{wch:55},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,ws,'Log Aktivitas');
+
+  const filename=`LogAktivitas_${S.namaWarung.replace(/\s+/g,'_')}_${LA.period}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb,filename);
+  logActivity('export_excel',`Export Log Aktivitas · ${periodeLabel}`);
+  showToast(`Log berhasil diexport (${data.length} baris) ✓`);
+}
+function showSOReport(rows, akurasi){
+  if(!rows.length){ showToast('Tidak ada barang yang dihitung'); return; }
+
+  const sesuai=rows.filter(r=>r.selisih===0);
+  const lebih=rows.filter(r=>r.selisih>0);
+  const kurang=rows.filter(r=>r.selisih<0);
+
+  // Analisis otomatis
+  const analisis=[];
+  if(lebih.length) analisis.push(`<b>${lebih.length} barang</b> stok fisik LEBIH dari sistem → kemungkinan: salah input belanja sebelumnya, atau bonus barang tidak tercatat.`);
+  if(kurang.length) analisis.push(`<b>${kurang.length} barang</b> stok fisik KURANG dari sistem → kemungkinan: penjualan yang tidak tercatat, barang hilang, atau expired tidak dilaporkan.`);
+  if(sesuai.length===rows.length) analisis.push('Semua stok sesuai. Data sistem sudah akurat.');
+
+  const rowHtml = rows.sort((a,b)=>Math.abs(b.selisih)-Math.abs(a.selisih)).map(r=>{
+    const cls=r.selisih===0?'var(--text2)':r.selisih>0?'var(--green)':'var(--red)';
+    const icon=r.selisih===0?'ti-check':'ti-arrows-exchange';
+    return `<div class="ledger-item">
+      <div style="width:28px;height:28px;border-radius:var(--r8);background:var(--bg2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="ti ${icon}" style="font-size:13px;color:${cls}"></i>
+      </div>
+      <div class="list-info">
+        <div class="list-title" style="font-size:13px">${r.nama}</div>
+        <div class="list-sub">Sistem ${r.sistem} → Fisik ${r.fisik}</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:${cls};text-align:right">
+        ${r.selisih>0?'+':''}${r.selisih} pcs
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('soReportContent').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div class="stat" style="padding:10px;text-align:center">
+        <div class="stat-val g">${akurasi}%</div><div class="stat-label">Akurasi</div>
+      </div>
+      <div class="stat" style="padding:10px;text-align:center">
+        <div class="stat-val" style="color:var(--green)">${lebih.length}</div><div class="stat-label">Lebih</div>
+      </div>
+      <div class="stat" style="padding:10px;text-align:center">
+        <div class="stat-val r">${kurang.length}</div><div class="stat-label">Kurang</div>
+      </div>
+    </div>
+    ${analisis.length?`<div style="background:var(--blue-bg);border-radius:var(--r8);padding:10px 12px;font-size:12px;color:var(--blue);line-height:1.7;margin-bottom:12px">
+      <b>Analisis:</b><br>${analisis.join('<br>')}
+    </div>`:''}
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Detail per barang</div>
+    ${rowHtml}`;
+
+  openOverlay('modalSOReport');
+}
+
+let _koreksiBarangId=null;
+function openKoreksiStok(id){
+  _koreksiBarangId=id;
+  const b=S.barang.find(x=>x.id===id); if(!b) return;
+  const s=stok(b);
+  document.getElementById('koreksiInfo').innerHTML=
+    `<b>${b.nama}</b><br>Stok sistem saat ini: <b>${s} pcs</b><br>
+    <span style="font-size:11px;color:var(--text2)">Gunakan fitur ini untuk koreksi cepat tanpa full opname. Semua selisih akan tercatat di Log Aktivitas.</span>`;
+  document.getElementById('koreksiStokBaru').value='';
+  document.getElementById('koreksiAlasan').value='';
+  document.getElementById('koreksiPreview').style.display='none';
+  closeOverlay('modalDetail');
+  openOverlay('modalKoreksiStok');
+
+  document.getElementById('koreksiStokBaru').oninput=function(){
+    const baru=+this.value;
+    const selisih=baru-s;
+    const pv=document.getElementById('koreksiPreview');
+    if(isNaN(baru)||this.value===''){pv.style.display='none';return;}
+    pv.style.display='block';
+    pv.textContent=`Selisih: ${selisih>0?'+':''}${selisih} pcs · Stok setelah koreksi: ${baru} pcs`;
+  };
+}
+
+async function simpanKoreksiStok(){
+  const b=S.barang.find(x=>x.id===_koreksiBarangId); if(!b) return;
+  const baru=+document.getElementById('koreksiStokBaru').value;
+  const alasan=document.getElementById('koreksiAlasan').value.trim()||'Koreksi stok manual';
+  if(isNaN(baru)||baru<0){showToast('Masukkan jumlah stok yang benar');return;}
+  const sistem=stok(b);
+  const selisih=baru-sistem;
+  if(selisih===0){showToast('Stok sama dengan sistem, tidak ada perubahan');return;}
+
+  if(selisih<0){
+    await fifoDeductDB(b,Math.abs(selisih));
+  } else {
+    const harga=avgHpp(b)||0;
+    const {data,error}=await sb.from('batches').insert({barang_id:b.id,qty:selisih,harga_beli:harga}).select().single();
+    if(error){showToast('Gagal simpan: '+error.message);return;}
+    b.batches.push({id:data.id,qty:selisih,hargaBeli:harga,ts:new Date(data.created_at).getTime()});
+  }
+  logActivity('opname',`Koreksi stok: ${b.nama} ${sistem}→${baru} pcs · ${alasan}`,null,b.id);
+  closeOverlay('modalKoreksiStok');
+  renderBarang();
+  showToast(`Stok ${b.nama} dikoreksi: ${sistem} → ${baru} pcs ✓`);
+}
 function renderRestock(){
   const items=S.barang.map(b=>({b,d:doi(b),s:stok(b)})).sort((a,c)=>a.d-c.d);
   const el=document.getElementById('restockFull');
@@ -2565,6 +2775,8 @@ async function saveWarungName(){
   const {error}=await sb.from('warungs').update({nama_warung:nama}).eq('id',S.warungId);
   if(error){showToast('Gagal simpan: '+error.message);return;}
   S.namaWarung=nama;
+  const greetEl=document.getElementById('greetingText');
+  if(greetEl) greetEl.textContent=`Halo, Juragan ${S.namaWarung}! 👋`;
   closeOverlay('modalWarung'); showToast('Profil disimpan ✓');
 }
 
@@ -2796,10 +3008,10 @@ function getAccessStatus(warung){
 function showExpired(warung){
   const hasHadSub=warung.subscription_expires_at;
   const msg=hasHadSub
-    ? 'Langganan lo sudah berakhir. Perpanjang untuk tetap akses semua fitur Jagoan Warung.'
+    ? 'Langganan Anda sudah berakhir. Perpanjang untuk tetap akses semua fitur Jagoan Warung.'
     : 'Masa trial 90 hari lo sudah habis. Upgrade ke Jagoan Warung Lengkap untuk tetap berjualan.';
   document.getElementById('expiredMsg').innerHTML=
-    msg+'<br><br><span style="font-size:12px">Data warung lo tetap aman.</span>';
+    msg+'<br><br><span style="font-size:12px">Data warung Anda tetap aman.</span>';
   const el=document.getElementById('expiredScreen');
   el.style.display='flex';
   requestAnimationFrame(()=>el.classList.add('visible'));
@@ -3215,21 +3427,21 @@ const OB = {
 const OB_STEPS = [
   {
     title: 'Selamat datang di Jagoan Warung! 🎉',
-    sub: 'Kami akan bantu setup warung lo dalam 3 langkah cepat. Mulai yuk!',
+    sub: 'Kami akan bantu setup warung Anda dalam 3 langkah cepat. Mulai yuk!',
     skipLabel: null,
     render: ()=>`
       <div style="text-align:center;padding:20px 0">
         <div style="font-size:72px;margin-bottom:16px">🏪</div>
         <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">${S.userEmail}</div>
         <div style="font-size:13px;color:var(--text2);line-height:1.6;max-width:300px;margin:0 auto">
-          Jagoan Warung bantu lo catat stok, hitung profit dengan FIFO, dan tahu kapan harus restock — secara otomatis.
+          Jagoan Warung membantu Anda mencatat stok, hitung profit dengan FIFO, dan tahu kapan harus restock — secara otomatis.
         </div>
       </div>`,
     next: ()=>true,
   },
   {
-    title: 'Nama warung lo apa?',
-    sub: 'Ini akan tampil di dashboard dan laporan lo.',
+    title: 'Nama warung Anda apa?',
+    sub: 'Ini akan tampil di dashboard dan laporan Anda.',
     skipLabel: 'Pakai nama default',
     render: ()=>`
       <div class="inp-group">
@@ -3237,7 +3449,7 @@ const OB_STEPS = [
         <input type="text" id="obNamaWarung" placeholder="cth: Warung Pak Ucok" value="${OB.namaWarung||S.namaWarung||''}"
           style="font-size:18px;font-weight:700;padding:14px">
       </div>
-      <div style="font-size:12px;color:var(--text2);margin-top:4px">Bisa diganti kapan saja di Profil Warung</div>`,
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">Dapat diubah kapan saja di Profil Warung</div>`,
     next: async ()=>{
       const val=document.getElementById('obNamaWarung')?.value.trim();
       OB.namaWarung=val||'Warung Saya';
@@ -3248,7 +3460,7 @@ const OB_STEPS = [
     },
   },
   {
-    title: 'Warung lo jual apa aja?',
+    title: 'Warung Anda menjual apa?',
     sub: 'Pilih kategori utama — bisa tambah kategori lain nanti.',
     skipLabel: 'Lewati',
     render: ()=>{
@@ -3267,7 +3479,7 @@ const OB_STEPS = [
     next: ()=>{ return true; },
   },
   {
-    title: 'Berapa banyak barang di warung lo?',
+    title: 'Berapa banyak barang di warung Anda?',
     sub: 'Ini bantu kami siapkan tampilan yang pas buat lo.',
     skipLabel: 'Lewati',
     render: ()=>{
@@ -3286,7 +3498,7 @@ const OB_STEPS = [
   },
   {
     title: 'Semua siap! 🚀',
-    sub: 'Dashboard lo sudah aktif. Yuk mulai tambah barang pertama.',
+    sub: 'Dashboard Anda sudah aktif. Mulai tambah barang pertama.',
     skipLabel: null,
     render: ()=>`
       <div style="display:flex;flex-direction:column;gap:10px">
@@ -3371,7 +3583,7 @@ async function finishOnboarding(){
   hideOnboarding();
   updatePeriodLabel();
   goScreen('barang');
-  showToast('Setup selesai! Yuk tambah barang pertama 🎉',3500);
+  showToast('Setup selesai! Mulai tambah barang pertama 🎉',3500);
   setTimeout(()=>openAddBarang(),400);
 }
 async function renderArsip(){
@@ -3521,6 +3733,9 @@ async function afterLogin(user){
     if(!warung){ hideLoading(); showLogin(); authHandled=false; return; }
     S.warungId=warung.id;
     S.namaWarung=warung.nama_warung||'Warung Saya';
+    // Set sapaan dengan nama warung
+    const greetEl=document.getElementById('greetingText');
+    if(greetEl) greetEl.textContent=`Halo, Juragan ${S.namaWarung}! 👋`;
 
     // Cek access status SEBELUM load data
     const access=getAccessStatus(warung);
