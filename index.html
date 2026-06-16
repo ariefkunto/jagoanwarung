@@ -622,27 +622,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="belanjaRiwayat"><div class="empty" style="padding:16px"><i class="ti ti-history"></i>Belum ada catatan</div></div>
     </div>
 
-    <!-- EVENT PREPARATION -->
-    <div class="card">
+    <!-- EVENT PREPARATION — AUTO DETECT -->
+    <div class="card" id="eventPrepCard">
       <div class="sec-hdr">
-        <span class="sec-hdr-title">🎯 Persiapan Event</span>
-        <span style="font-size:11px;color:var(--text2)">Rekomendasi stok</span>
+        <span class="sec-hdr-title">🗓️ Persiapan Event</span>
+        <span style="font-size:11px;color:var(--brand);cursor:pointer" onclick="renderEventPrep()">Refresh</span>
       </div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Pilih event mendatang untuk mendapat rekomendasi barang yang perlu distok lebih banyak.</div>
-      <div class="tag-row" id="eventTags" style="flex-wrap:wrap">
-        <div class="tag" onclick="pilihEvent('ramadan',this)">🌙 Ramadan</div>
-        <div class="tag" onclick="pilihEvent('lebaran',this)">🎊 Lebaran</div>
-        <div class="tag" onclick="pilihEvent('agustus',this)">🇮🇩 17 Agustus</div>
-        <div class="tag" onclick="pilihEvent('nataru',this)">🎄 Nataru</div>
-        <div class="tag" onclick="pilihEvent('custom',this)">📅 Custom</div>
-      </div>
-      <div id="eventCustomInput" style="display:none;margin-top:10px">
-        <div class="inp-row">
-          <div class="inp-group"><label>Nama event</label><input type="text" id="eventNama" placeholder="cth: Acara Nikahan"></div>
-          <div class="inp-group"><label>Durasi (hari)</label><input type="number" id="eventDurasi" placeholder="7" min="1" max="60"></div>
-        </div>
-      </div>
-      <div id="eventResult" style="margin-top:12px"></div>
+      <div id="eventPrepContent"><div class="empty"><i class="ti ti-loader-2"></i>Menganalisis...</div></div>
     </div>
   </div>
 </div>
@@ -2339,7 +2325,7 @@ function populateBelanja(){
   renderBelanjaRiwayat();
   renderBelanjaAlert();
   renderTrending();
-  // bind preview
+  renderEventPrep();
   ['belanjaBarang','belanjaQty','belanjaHarga','belanjaBonus'].forEach(id=>{
     document.getElementById(id).oninput = previewBelanja;
   });
@@ -3902,76 +3888,139 @@ async function loadReturRiwayat2(){
 }
 
 // ═══════════════════════════════════════
-// EVENT PREPARATION
+// EVENT PREPARATION — AUTO DETECT
 // ═══════════════════════════════════════
-const EVENT_CONFIG = {
-  ramadan:  { label:'Ramadan', durasi:30, icon:'🌙', multiplier:{ Minuman:1.8, Makanan:1.5, 'Kebutuhan Rumah':1.3, Rokok:1.1 }},
-  lebaran:  { label:'Lebaran', durasi:7,  icon:'🎊', multiplier:{ Minuman:2.5, Makanan:2.0, 'Kebutuhan Rumah':1.8, Rokok:1.2 }},
-  agustus:  { label:'17 Agustus', durasi:3, icon:'🇮🇩', multiplier:{ Minuman:1.5, Makanan:1.4, 'Kebutuhan Rumah':1.1, Rokok:1.1 }},
-  nataru:   { label:'Natal & Tahun Baru', durasi:7, icon:'🎄', multiplier:{ Minuman:2.0, Makanan:1.6, 'Kebutuhan Rumah':1.4, Rokok:1.2 }},
-  custom:   { label:'Custom', durasi:7,  icon:'📅', multiplier:{ Minuman:1.5, Makanan:1.5, 'Kebutuhan Rumah':1.2, Rokok:1.1 }},
-};
-let _selectedEvent=null;
 
-function pilihEvent(key,el){
-  document.querySelectorAll('#eventTags .tag').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  _selectedEvent=key;
-  const customInput=document.getElementById('eventCustomInput');
-  customInput.style.display=key==='custom'?'block':'none';
-  hitungEventPrep(key);
+// Kalender event Indonesia (tanggal perlu diupdate tiap tahun untuk Ramadan/Lebaran)
+const UPCOMING_EVENTS = [
+  // 2026
+  { key:'agustus26',  label:'17 Agustus 2026',    icon:'🇮🇩', date:'2026-08-17', durasi:4,
+    multiplier:{Minuman:1.6, Makanan:1.5, Rokok:1.1, 'Kebutuhan Rumah':1.1},
+    tips:'Minuman kemasan dan camilan biasanya habis cepat saat perayaan kemerdekaan.' },
+  { key:'nataru26',   label:'Natal & Tahun Baru',  icon:'🎄', date:'2026-12-24', durasi:10,
+    multiplier:{Minuman:2.2, Makanan:1.8, Rokok:1.3, 'Kebutuhan Rumah':1.5},
+    tips:'Periode paling tinggi untuk minuman kemasan dan snack. Stok lebih awal 2-3 minggu.' },
+  // 2027
+  { key:'ramadan27',  label:'Ramadan 2027',         icon:'🌙', date:'2027-02-07', durasi:30,
+    multiplier:{Minuman:2.0, Makanan:1.7, Rokok:0.8, 'Kebutuhan Rumah':1.4},
+    tips:'Permintaan minuman dan sembako naik signifikan. Rokok cenderung turun saat puasa.' },
+  { key:'lebaran27',  label:'Lebaran Idul Fitri 2027', icon:'🎊', date:'2027-03-10', durasi:7,
+    multiplier:{Minuman:2.8, Makanan:2.3, Rokok:1.4, 'Kebutuhan Rumah':2.0},
+    tips:'Peak demand tertinggi dalam setahun. Sirup, biskuit, dan minuman habis paling cepat.' },
+  { key:'agustus27',  label:'17 Agustus 2027',    icon:'🇮🇩', date:'2027-08-17', durasi:4,
+    multiplier:{Minuman:1.6, Makanan:1.5, Rokok:1.1, 'Kebutuhan Rumah':1.1},
+    tips:'Minuman kemasan dan camilan biasanya habis cepat saat perayaan kemerdekaan.' },
+];
+
+function getDaysUntil(dateStr){
+  const target=new Date(dateStr+'T00:00:00');
+  const today=new Date(); today.setHours(0,0,0,0);
+  return Math.ceil((target-today)/86400000);
 }
 
-function hitungEventPrep(key){
-  const cfg=EVENT_CONFIG[key];
-  const durasi=key==='custom'?(+document.getElementById('eventDurasi')?.value||7):cfg.durasi;
-  const result=document.getElementById('eventResult');
-  if(!S.barang.length){result.innerHTML='<div class="empty"><i class="ti ti-package"></i>Tambah barang dulu</div>';return;}
+function getAlertLevel(days){
+  if(days<=14) return {color:'var(--red)', bg:'var(--red-bg)', label:'⚡ Segera siapkan', priority:3};
+  if(days<=45) return {color:'var(--amber)', bg:'var(--amber-bg)', label:'🕐 Mulai persiapkan', priority:2};
+  return {color:'var(--blue)', bg:'var(--blue-bg)', label:'📍 Dalam radar', priority:1};
+}
 
-  const recs=[];
-  let totalModal=0;
+function renderEventPrep(){
+  const el=document.getElementById('eventPrepContent');
+  if(!el) return;
 
-  S.barang.forEach(b=>{
-    const avgHarian=b.soldHistory.length
-      ? b.soldHistory.reduce((s,h)=>s+h.qty,0)/30
-      : 0;
-    const multiplier=cfg.multiplier[b.kategori]||1.3;
-    const kebutuhan=Math.ceil(avgHarian*durasi*multiplier);
-    const stokSaat=stok(b);
-    const perluBeli=Math.max(0,kebutuhan-stokSaat);
-    if(perluBeli>0){
-      const hpp=avgHpp(b)||0;
-      const modal=perluBeli*hpp;
-      totalModal+=modal;
-      recs.push({nama:b.nama,kategori:b.kategori,stok:stokSaat,kebutuhan,perluBeli,hpp,modal});
-    }
-  });
+  // Cari event dalam 180 hari ke depan
+  const upcoming=UPCOMING_EVENTS
+    .map(e=>({...e, daysLeft:getDaysUntil(e.date)}))
+    .filter(e=>e.daysLeft>=0 && e.daysLeft<=180)
+    .sort((a,b)=>a.daysLeft-b.daysLeft);
 
-  recs.sort((a,c)=>c.modal-a.modal);
-
-  if(!recs.length){
-    result.innerHTML=`<div style="background:var(--green-bg);border-radius:var(--r8);padding:12px;font-size:13px;color:var(--green);text-align:center">
-      ✅ Stok sudah cukup untuk ${cfg.icon} ${cfg.label} (${durasi} hari)
+  if(!upcoming.length){
+    el.innerHTML=`<div style="font-size:13px;color:var(--text2);text-align:center;padding:12px">
+      Tidak ada event besar dalam 6 bulan ke depan 🎉<br>
+      <span style="font-size:11px">Stok reguler Anda sudah mencukupi</span>
     </div>`;
     return;
   }
 
-  result.innerHTML=`
-    <div style="background:var(--amber-bg);border-radius:var(--r8);padding:10px 12px;margin-bottom:10px">
-      <div style="font-size:12px;font-weight:600;color:var(--amber)">📋 ${cfg.icon} Persiapan ${cfg.label} (${durasi} hari)</div>
-      <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:4px">${recs.length} barang perlu distok · Estimasi modal: ${fmtRp(totalModal)}</div>
-    </div>
-    ${recs.map(r=>`
-      <div class="list-item">
-        <div class="list-info">
-          <div class="list-title" style="font-size:13px">${r.nama}</div>
-          <div class="list-sub">${r.kategori} · Stok: ${r.stok} · Butuh: ${r.kebutuhan} pcs</div>
+  if(!S.barang.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-package"></i>Tambah barang dulu untuk mendapat rekomendasi</div>';
+    return;
+  }
+
+  let html='';
+  // Tampilkan maksimal 2 event terdekat
+  upcoming.slice(0,2).forEach((event,idx)=>{
+    const alert=getAlertLevel(event.daysLeft);
+    const recs=[];
+    let totalModal=0;
+
+    S.barang.forEach(b=>{
+      const avgHarian=b.soldHistory.length
+        ? b.soldHistory.reduce((s,h)=>s+h.qty,0)/Math.min(30,b.soldHistory.length||1)
+        : 0;
+      const mult=event.multiplier[b.kategori]||1.2;
+      // Kebutuhan = rata-rata harian × multiplier event × durasi event
+      const kebutuhan=Math.ceil(avgHarian*mult*event.durasi);
+      const stokSaat=stok(b);
+      // Hanya rekomendasikan kalau kebutuhan lebih dari stok saat ini
+      const perluBeli=Math.max(0,kebutuhan-stokSaat);
+      if(perluBeli>0 && avgHarian>0){
+        const hppSatuan=avgHpp(b)||0;
+        const modal=perluBeli*hppSatuan;
+        totalModal+=modal;
+        recs.push({nama:b.nama,kategori:b.kategori,stok:stokSaat,kebutuhan,perluBeli,hpp:hppSatuan,modal});
+      }
+    });
+
+    recs.sort((a,b)=>b.modal-a.modal); // urut dari yang paling butuh modal
+
+    html+=`
+    <div style="border:1.5px solid ${alert.color};border-radius:var(--r12);padding:12px;margin-bottom:12px;background:${alert.bg}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${event.icon} ${event.label}</div>
+          <div style="font-size:12px;color:${alert.color};font-weight:600">${alert.label} · ${event.daysLeft} hari lagi</div>
         </div>
-        <div class="list-right">
-          <div style="font-weight:700;color:var(--amber)">+${r.perluBeli} pcs</div>
-          <div style="font-size:11px;color:var(--text2)">${fmtRp(r.modal)}</div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;color:var(--text2)">Est. modal tambahan</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${fmtRp(totalModal)}</div>
         </div>
-      </div>`).join('')}`;
+      </div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px;padding:6px 8px;background:rgba(255,255,255,.5);border-radius:var(--r8)">
+        💡 ${event.tips}
+      </div>
+      ${recs.length===0
+        ? `<div style="font-size:13px;color:var(--green);font-weight:600;text-align:center;padding:8px">
+            ✅ Stok Anda sudah cukup untuk ${event.label}!
+           </div>`
+        : `<div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
+            ${recs.length} barang perlu ditambah stoknya:
+           </div>
+           ${recs.slice(0,5).map(r=>`
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid ${alert.color}22">
+              <div>
+                <div style="font-size:13px;font-weight:500">${r.nama}</div>
+                <div style="font-size:11px;color:var(--text2)">Stok: ${r.stok} · Target: ${r.kebutuhan} pcs</div>
+              </div>
+              <div style="text-align:right;flex-shrink:0;margin-left:8px">
+                <div style="font-weight:700;color:${alert.color}">+${r.perluBeli} pcs</div>
+                <div style="font-size:10px;color:var(--text2)">${fmtRp(r.modal)}</div>
+              </div>
+            </div>`).join('')}
+           ${recs.length>5?`<div style="font-size:11px;color:var(--text2);text-align:center;padding:6px">+${recs.length-5} barang lainnya · Lengkap di Laporan</div>`:''}`
+      }
+    </div>`;
+  });
+
+  // Tunjukkan event selanjutnya kalau ada
+  if(upcoming.length>2){
+    const next=upcoming[2];
+    html+=`<div style="font-size:12px;color:var(--text2);text-align:center;padding:4px">
+      Event berikutnya: ${next.icon} ${next.label} dalam ${next.daysLeft} hari
+    </div>`;
+  }
+
+  el.innerHTML=html;
 }
 function toggleAcc(header){
   const item=header.closest('.acc-item');
