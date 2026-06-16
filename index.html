@@ -510,6 +510,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="btn" onclick="suspendCart()" style="flex:1" id="btnSuspend" disabled><i class="ti ti-player-pause"></i>Tahan</button>
     </div>
     <button class="btn primary" onclick="prosesJual()" id="btnJual" disabled><i class="ti ti-check"></i>Proses Transaksi</button>
+
+    <!-- RIWAYAT JUAL HARI INI -->
+    <div class="card" style="padding:8px 14px">
+      <div class="sec-hdr" style="margin-bottom:6px">
+        <span class="sec-hdr-title">Terjual hari ini</span>
+        <span style="font-size:12px;color:var(--text2)" id="posTodayTotal">Rp 0</span>
+      </div>
+      <div id="posTodayList"><div class="empty" style="padding:12px"><i class="ti ti-receipt"></i>Belum ada transaksi hari ini</div></div>
+    </div>
   </div>
 </div>
 
@@ -688,6 +697,61 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- ══════════════ LOG AKTIVITAS ══════════════ -->
+<div class="screen" id="screen-logaktivitas">
+  <div class="content">
+    <div class="card" style="padding:10px 14px">
+      <div class="tag-row" id="logPeriodTags">
+        <div class="tag active" onclick="setLogPeriod('today',this)">Hari ini</div>
+        <div class="tag" onclick="setLogPeriod('week',this)">Minggu ini</div>
+        <div class="tag" onclick="setLogPeriod('month',this)">Bulan ini</div>
+      </div>
+    </div>
+    <div class="card" style="padding:8px 14px">
+      <div id="logList"><div class="empty"><i class="ti ti-activity"></i>Memuat aktivitas...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ RIWAYAT TRANSAKSI ══════════════ -->
+<div class="screen" id="screen-riwayat">
+  <div class="content">
+
+    <!-- FILTER PERIODE -->
+    <div class="card" style="padding:10px 14px">
+      <div class="tag-row" id="riwayatPeriodTags">
+        <div class="tag active" onclick="setRiwayatPeriod('today',this)">Hari ini</div>
+        <div class="tag" onclick="setRiwayatPeriod('week',this)">Minggu ini</div>
+        <div class="tag" onclick="setRiwayatPeriod('month',this)">Bulan ini</div>
+        <div class="tag" onclick="setRiwayatPeriod('custom',this)">Custom</div>
+      </div>
+      <div id="riwayatCustomRange" style="display:none;margin-top:8px">
+        <div class="inp-row">
+          <div class="inp-group"><label>Dari</label><input type="date" id="riwayatFrom"></div>
+          <div class="inp-group"><label>Sampai</label><input type="date" id="riwayatTo"></div>
+        </div>
+        <button class="btn primary sm" style="width:100%;margin-top:8px" onclick="loadRiwayat()"><i class="ti ti-search"></i>Cari</button>
+      </div>
+    </div>
+
+    <!-- SUMMARY STRIP -->
+    <div id="riwayatSummary" style="display:none">
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-label">Total Omzet</div><div class="stat-val g" id="rSum1">Rp 0</div></div>
+        <div class="stat"><div class="stat-label">Keuntungan</div><div class="stat-val" id="rSum2">Rp 0</div></div>
+        <div class="stat"><div class="stat-label">Jumlah Transaksi</div><div class="stat-val" id="rSum3">0</div></div>
+        <div class="stat"><div class="stat-label">Item Terjual</div><div class="stat-val" id="rSum4">0</div></div>
+      </div>
+    </div>
+
+    <!-- LIST -->
+    <div class="card" style="padding:8px 14px">
+      <div id="riwayatList"><div class="empty"><i class="ti ti-receipt"></i>Pilih periode untuk melihat transaksi</div></div>
+    </div>
+
+  </div>
+</div>
+
 <!-- ══════════════ ARSIP BARANG ══════════════ -->
 <div class="screen" id="screen-arsip">
   <div class="content">
@@ -752,6 +816,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="modal">
     <i class="ti ti-x modal-close" onclick="closeOverlay('moreMenu')"></i>
     <div class="modal-title">Menu Lainnya</div>
+    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('logaktivitas')"><i class="ti ti-activity"></i>Log Aktivitas</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('kerugian')"><i class="ti ti-alert-triangle"></i>Catat Kerugian Inventory</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('retur')"><i class="ti ti-arrow-back-up"></i>Retur dari Customer</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('opname')"><i class="ti ti-clipboard-check"></i>Stock Opname</button>
@@ -780,6 +845,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <i class="ti ti-x modal-close" onclick="closeOverlay('modalSuspended')"></i>
     <div class="modal-title">Transaksi Tertahan</div>
     <div id="suspendedList"><div class="empty"><i class="ti ti-player-pause"></i>Tidak ada transaksi tertahan</div></div>
+  </div>
+</div>
+
+<!-- Detail Transaksi -->
+<div class="overlay" id="modalTxDetail">
+  <div class="modal">
+    <i class="ti ti-x modal-close" onclick="closeOverlay('modalTxDetail')"></i>
+    <div class="modal-title">Detail Transaksi</div>
+    <div id="txDetailContent"></div>
   </div>
 </div>
 
@@ -1147,11 +1221,13 @@ function stockAccuracy(){
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
-const secondaryScreens = ['kerugian','opname','restock','notif','laporan','arsip','retur'];
+const secondaryScreens = ['kerugian','opname','restock','notif','laporan','arsip','retur','riwayat','logaktivitas'];
 const screenLabel = {
   dashboard:'Asisten Pintar Warung', barang:'Master Barang', pos:'Jual Barang',
   belanja:'Belanja Barang', kerugian:'Catat Kerugian', opname:'Stock Opname',
-  restock:'Jagoan Warung', notif:'Notifikasi', laporan:'Laporan & Export', arsip:'Arsip Barang', retur:'Retur dari Customer',
+  restock:'Jagoan Warung', notif:'Notifikasi', laporan:'Laporan & Export',
+  arsip:'Arsip Barang', retur:'Retur dari Customer', riwayat:'Riwayat Transaksi',
+  logaktivitas:'Log Aktivitas',
 };
 
 function goScreen(s){
@@ -1171,7 +1247,7 @@ function goScreen(s){
   const renders = {
     dashboard: renderDashboard,
     barang: renderBarang,
-    pos: renderCart,
+    pos: ()=>{ renderCart(); renderPosToday(); },
     belanja: populateBelanja,
     kerugian: populateKerugian,
     opname: renderOpname,
@@ -1180,6 +1256,8 @@ function goScreen(s){
     laporan: initLaporan,
     arsip: renderArsip,
     retur: initRetur,
+    riwayat: initRiwayat,
+    logaktivitas: initLogAktivitas,
   };
   if(renders[s]) renders[s]();
 }
@@ -1581,6 +1659,7 @@ async function hapusBarang(id){
   const {error}=await sb.from('barang').update({archived:true, archived_at:new Date().toISOString()}).eq('id',id);
   if(error){showToast('Gagal arsipkan: '+error.message);return;}
   S.barang=S.barang.filter(b=>b.id!==id);
+  logActivity('arsip_barang',`Barang diarsipkan: ${S.barang.find(b=>b.id===id)?.nama||id}`);
   closeOverlay('modalDetail'); renderBarang(); showToast('Barang diarsipkan ✓');
 }
 async function saveBarang(){
@@ -1597,10 +1676,12 @@ async function saveBarang(){
     if(error){showToast('Gagal simpan: '+error.message);return;}
     const b=S.barang.find(x=>x.id===S.editingId);
     if(b) Object.assign(b,{nama:payload.nama,kategori:payload.kategori,hargaJual:payload.harga_jual,minStok:payload.min_stok,leadTime:payload.lead_time});
+    logActivity('edit_barang',`Edit barang: ${payload.nama}`,null,S.editingId);
   } else {
     const {data,error}=await sb.from('barang').insert({...payload,warung_id:S.warungId}).select().single();
     if(error){showToast('Gagal simpan: '+error.message);return;}
     S.barang.push({id:data.id,nama:payload.nama,kategori:payload.kategori,hargaJual:payload.harga_jual,minStok:payload.min_stok,leadTime:payload.lead_time,batches:[],soldHistory:[]});
+    logActivity('barang_baru',`Barang baru: ${payload.nama}`,null,data.id);
   }
   closeOverlay('modalBarang'); renderBarang(); showToast('Barang disimpan ✓');
 }
@@ -1728,12 +1809,13 @@ async function konfirmasiJual(){
   }
 
   S.transactions.unshift({dbId:tx.id,items,total:totalSell,hpp:totalHpp,ts,payment,voided:false});
+  logActivity('jual',`${items} item terjual · ${payment}`,totalSell,tx.id);
   S.cart=[];
   // reset payment selector to Cash for next transaction
   S.paymentMethod='Cash';
   document.querySelectorAll('#paymentTags .tag').forEach((t,i)=>t.classList.toggle('active',i===0));
   closeOverlay('modalKonfirmasi');
-  renderCart(); renderDashboard();
+  renderCart(); renderDashboard(); renderPosToday();
   showToast('Transaksi berhasil ('+payment+')! Profit '+fmtRp(totalSell-totalHpp));
 }
 
@@ -1837,6 +1919,7 @@ async function prosesBelanjaIn(){
   b.batches.push({id:data.id,qty:totalQty,hargaBeli:harga,ts:new Date(data.created_at).getTime()});
   S.purchases.unshift({nama:b.nama,qty:totalQty,hargaBeli:harga,supplier,ts:Date.now()});
   if(S.purchases.length>10) S.purchases=S.purchases.slice(0,10);
+  logActivity('belanja',`${b.nama} +${totalQty} pcs${supplier?' dari '+supplier:''}`,totalQty*harga,data.id);
   ['belanjaBarang','belanjaQty','belanjaHarga','belanjaSupplier','belanjaBonus'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('belanjaPreview').style.display='none';
   renderBelanjaRiwayat(); renderBelanjaAlert(); renderDashboard();
@@ -1901,6 +1984,7 @@ async function prosesKerugian(){
   S.losses.unshift({nama:b.nama,jenis:S.jenis,qty,nilai,note,ts:Date.now()});
   if(S.losses.length>10) S.losses=S.losses.slice(0,10);
   S.lossesToday.push({nilai,ts:Date.now()});
+  logActivity('kerugian',`${S.jenis}: ${b.nama} ${qty} pcs${note?' · '+note:''}`,nilai);
   ['kerugianBarang','kerugianQty','kerugianNote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('kerugianPreview').style.display='none';
   renderKerugianRiwayat(); renderDashboard();
@@ -1962,6 +2046,7 @@ async function prosesOpname(){
     await sb.from('opname_items').insert(opnameItems.map(it=>({...it, opname_id:opnameRow.id})));
   }
   S.opnames=[{ts:Date.now(),akurasi,count:total}];
+  logActivity('opname',`Stock Opname selesai · ${total} SKU dihitung · Akurasi ${akurasi}%`);
   renderOpname(); renderDashboard();
   showToast('Opname selesai! Akurasi stok: '+akurasi+'%');
 }
@@ -2080,10 +2165,11 @@ async function loadLaporanData(){
 
   const fromISO=from.toISOString(), toISO=to.toISOString();
 
-  // 1. PENJUALAN
+  // 1. PENJUALAN + DETAIL ITEM
   const {data:txData}=await sb.from('transactions')
-    .select('total,hpp,payment_method,created_at,transaction_items(barang_id,qty,harga_jual)')
-    .eq('warung_id',S.warungId).gte('created_at',fromISO).lte('created_at',toISO)
+    .select('id, total, hpp, payment_method, created_at, transaction_items(barang_id, qty, harga_jual, hpp)')
+    .eq('warung_id',S.warungId)
+    .gte('created_at',fromISO).lte('created_at',toISO)
     .order('created_at',{ascending:false});
 
   // 2. KERUGIAN
@@ -2181,40 +2267,77 @@ async function exportExcel(){
   if(typeof XLSX==='undefined'){showToast('Library Excel gagal dimuat');return;}
   const {txData,lossData,stokData,abcItems}=LS.data;
   const wb=XLSX.utils.book_new();
+  let txNo=0;
 
-  // SHEET 1: PENJUALAN
-  const txRows=[['Tanggal','Jumlah Item','Total Penjualan','HPP','Profit','Metode Bayar']];
+  // SHEET 1: DETAIL TRANSAKSI (per item per transaksi)
+  const detailRows=[['No','Tanggal','Nama Barang','Qty','Harga Jual (Rp)','HPP (Rp)','Profit Item (Rp)','Total Transaksi (Rp)','Metode Bayar']];
   txData.forEach(t=>{
+    txNo++;
+    const items=t.transaction_items||[];
+    if(!items.length){
+      detailRows.push([txNo,new Date(t.created_at).toLocaleString('id-ID'),'(data item tidak tersedia)','','','','',Number(t.total),t.payment_method]);
+    } else {
+      items.forEach((it,i)=>{
+        const bNama=S.barang.find(b=>b.id===it.barang_id)?.nama||'(barang dihapus)';
+        const hargaJual=Number(it.harga_jual);
+        const hppItem=Number(it.hpp)||0;
+        const profitItem=hargaJual*it.qty - hppItem;
+        detailRows.push([
+          i===0?txNo:'',
+          i===0?new Date(t.created_at).toLocaleString('id-ID'):'',
+          bNama,
+          it.qty,
+          hargaJual,
+          hppItem?Math.round(hppItem/it.qty):0,
+          profitItem,
+          i===0?Number(t.total):'',
+          i===0?t.payment_method:'',
+        ]);
+      });
+    }
+  });
+  detailRows.push([]);
+  const totDetail=txData.reduce((s,t)=>s+Number(t.total),0);
+  const hppDetail=txData.reduce((s,t)=>s+Number(t.hpp),0);
+  detailRows.push(['','','TOTAL','','','','',totDetail,'']);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(detailRows),'Detail Transaksi');
+
+  // SHEET 2: RINGKASAN PENJUALAN (per transaksi)
+  const txRows=[['No','Tanggal','Jumlah Item','Total Penjualan (Rp)','HPP (Rp)','Profit (Rp)','Metode Bayar']];
+  let txNo2=0;
+  txData.forEach(t=>{
+    txNo2++;
     const items=(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0);
-    txRows.push([new Date(t.created_at).toLocaleString('id-ID'),items,Number(t.total),Number(t.hpp),Number(t.total)-Number(t.hpp),t.payment_method]);
+    txRows.push([txNo2,new Date(t.created_at).toLocaleString('id-ID'),items,Number(t.total),Number(t.hpp),Number(t.total)-Number(t.hpp),t.payment_method]);
   });
   txRows.push([]);
   const tot=txData.reduce((s,t)=>s+Number(t.total),0);
   const hpp=txData.reduce((s,t)=>s+Number(t.hpp),0);
-  txRows.push(['TOTAL','',tot,hpp,tot-hpp,'']);
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(txRows),'Penjualan');
+  txRows.push(['','','TOTAL',tot,hpp,tot-hpp,'']);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(txRows),'Ringkasan Penjualan');
 
-  // SHEET 2: STOK
+  // SHEET 3: STOK
   const stokRows=[['Nama Barang','Kategori','Stok (pcs)','Harga Modal (Rp)','Harga Jual (Rp)','Nilai Stok (Rp)']];
   stokData.forEach(x=>stokRows.push([x.nama,x.kategori,x.stok,x.hargaModal,x.hargaJual,x.nilaiStok]));
   stokRows.push([]);
   stokRows.push(['TOTAL NILAI STOK','','','','',stokData.reduce((s,x)=>s+x.nilaiStok,0)]);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(stokRows),'Stok');
 
-  // SHEET 3: KERUGIAN
+  // SHEET 4: KERUGIAN
   const lossRows=[['Tanggal','Nama Barang','Jenis','Qty','Nilai Kerugian (Rp)','Catatan']];
   lossData.forEach(l=>lossRows.push([new Date(l.created_at).toLocaleString('id-ID'),l.barang?.nama||'-',l.jenis,l.qty,Number(l.nilai),l.note||'']));
   lossRows.push([]);
   lossRows.push(['TOTAL','','','',lossData.reduce((s,l)=>s+Number(l.nilai),0),'']);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(lossRows),'Kerugian');
 
-  // SHEET 4: ABC ANALYSIS
+  // SHEET 5: ABC ANALYSIS
   const abcRows=[['Nama Barang','Omzet (Rp)','Kontribusi %','Kumulatif %','Kelas']];
   abcItems.forEach(x=>abcRows.push([x.nama,Math.round(x.rev),Math.round(x.pct*10)/10,Math.round(x.cumPct*10)/10,x.cls]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(abcRows),'ABC Analysis');
 
   XLSX.writeFile(wb,`Laporan_JagoanWarung_${periodStr().replace(/ /g,'_').replace(/\./g,'')}.xlsx`);
-  showToast('Excel berhasil didownload!');
+  logActivity('export_excel',`Export Excel didownload · Periode: ${periodStr()}`);
+  showToast('Excel berhasil didownload! 5 sheet tersedia.');
 }
 
 async function exportPDF(){
@@ -2306,6 +2429,7 @@ async function exportPDF(){
   doc.text('Digenerate oleh Jagoan Warung (jw.karyawansakti.com) — '+new Date().toLocaleString('id-ID'),pad,y);
 
   doc.save(`Laporan_JagoanWarung_${periodStr().replace(/ /g,'_').replace(/\./g,'')}.pdf`);
+  logActivity('export_pdf',`Export PDF didownload · Periode: ${periodStr()}`);
   showToast('PDF berhasil didownload!');
   } catch(e) {
     console.error('PDF error:', e);
@@ -2446,6 +2570,7 @@ async function prosesRetur(){
   const lastH=b.soldHistory.findIndex(h=>h.qty>=qty);
   if(lastH>=0) b.soldHistory[lastH].qty-=qty;
 
+  logActivity('retur',`Retur customer: ${b.nama} ${qty} pcs${note?' · '+note:''}`,qty*(harga||b.hargaJual));
   ['returBarang','returQty','returHarga','returNote'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('returPreview').style.display='none';
   loadReturRiwayat();
@@ -2483,6 +2608,7 @@ async function suspendCart(){
   });
   if(error){showToast('Gagal simpan: '+error.message);return;}
   S.cart=[];
+  logActivity('suspend',`Keranjang ditahan: ${label}`);
   renderCart();
   showToast('Transaksi ditahan: '+label);
 }
@@ -2577,6 +2703,7 @@ async function konfirmasiVoid(){
 
   // Update state lokal
   S.transactions=S.transactions.filter(t=>t.dbId!==voidTargetTx.dbId);
+  logActivity('void',`Transaksi dibatalkan · ${voidTargetTx.payment}${note?' · '+note:''}`,voidTargetTx.total,voidTargetTx.dbId);
   voidTargetTx=null;
   closeOverlay('modalVoid');
   renderDashboard();
@@ -2626,6 +2753,254 @@ function renderTrialBanner(access){
     <i class="ti ${icon}" aria-hidden="true"></i>
     <div class="trial-banner-text"><span>${msg}</span></div>
   </div>`;
+}
+
+
+// ═══════════════════════════════════════
+// ACTIVITY LOG
+// ═══════════════════════════════════════
+const LOG_ICONS = {
+  jual:'ti-shopping-cart', belanja:'ti-download', barang_baru:'ti-plus',
+  edit_barang:'ti-edit', arsip_barang:'ti-archive', pulihkan_barang:'ti-restore',
+  opname:'ti-clipboard-check', kerugian:'ti-alert-triangle', retur:'ti-arrow-back-up',
+  void:'ti-ban', suspend:'ti-player-pause', export_excel:'ti-file-spreadsheet',
+  export_pdf:'ti-file-type-pdf',
+};
+const LOG_COLORS = {
+  jual:'var(--blue)', belanja:'var(--green)', barang_baru:'var(--green)',
+  edit_barang:'var(--amber)', arsip_barang:'var(--text2)', pulihkan_barang:'var(--green)',
+  opname:'var(--blue)', kerugian:'var(--red)', retur:'var(--amber)',
+  void:'var(--red)', suspend:'var(--amber)', export_excel:'var(--green)',
+  export_pdf:'var(--red)',
+};
+
+async function logActivity(tipe, deskripsi, nilai=null, refId=null){
+  if(!sb||!S.warungId) return;
+  // Fire-and-forget — jangan block main flow
+  sb.from('activity_log').insert({
+    warung_id:S.warungId, tipe, deskripsi,
+    nilai:nilai||null, ref_id:refId||null
+  }).then(({error})=>{ if(error) console.error('log error:',error.message); });
+}
+
+// ── POS: Riwayat Jual Hari Ini ──
+async function renderPosToday(){
+  const el=document.getElementById('posTodayList');
+  const totalEl=document.getElementById('posTodayTotal');
+  if(!el) return;
+  const todayStart=new Date(); todayStart.setHours(0,0,0,0);
+  const {data,error}=await sb.from('transactions')
+    .select('total, hpp, payment_method, created_at, transaction_items(qty)')
+    .eq('warung_id',S.warungId)
+    .eq('voided',false)
+    .gte('created_at',todayStart.toISOString())
+    .order('created_at',{ascending:false});
+  if(error||!data?.length){
+    el.innerHTML='<div class="empty" style="padding:12px"><i class="ti ti-receipt"></i>Belum ada transaksi hari ini</div>';
+    if(totalEl) totalEl.textContent='Rp 0';
+    return;
+  }
+  const grandTotal=data.reduce((s,t)=>s+Number(t.total),0);
+  if(totalEl) totalEl.textContent=fmtRp(grandTotal);
+  const payIcon={Cash:'ti-cash',QRIS:'ti-qrcode',Transfer:'ti-building-bank',Lainnya:'ti-dots'};
+  el.innerHTML=data.map(t=>{
+    const items=(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0);
+    return `<div class="ledger-item">
+      <div class="ledger-icon pos"><i class="ti ${payIcon[t.payment_method]||'ti-shopping-cart'}"></i></div>
+      <div class="list-info">
+        <div class="list-title">${new Date(t.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="list-sub">${items} item · ${t.payment_method}</div>
+      </div>
+      <div class="list-right">
+        <div style="font-weight:600;color:var(--green)">${fmtRp(Number(t.total))}</div>
+        <div style="font-size:11px;color:var(--text2)">Profit ${fmtRp(Number(t.total)-Number(t.hpp))}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── LOG AKTIVITAS SCREEN ──
+const LA = { period:'today' };
+
+function initLogAktivitas(){ loadLogAktivitas(); }
+
+function setLogPeriod(p,el){
+  document.querySelectorAll('#logPeriodTags .tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); LA.period=p;
+  loadLogAktivitas();
+}
+
+async function loadLogAktivitas(){
+  const el=document.getElementById('logList');
+  if(!el) return;
+  el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i>Memuat...</div>';
+  const now=new Date();
+  let from,to;
+  if(LA.period==='today'){
+    from=new Date(now); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else if(LA.period==='week'){
+    from=new Date(now); from.setDate(from.getDate()-from.getDay()); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else {
+    from=new Date(now.getFullYear(),now.getMonth(),1,0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  }
+  const {data,error}=await sb.from('activity_log')
+    .select('*')
+    .eq('warung_id',S.warungId)
+    .gte('created_at',from.toISOString())
+    .lte('created_at',to.toISOString())
+    .order('created_at',{ascending:false})
+    .limit(200);
+  if(error){el.innerHTML='<div class="empty"><i class="ti ti-alert-circle"></i>Gagal: '+error.message+'</div>';return;}
+  if(!data?.length){el.innerHTML='<div class="empty"><i class="ti ti-activity"></i>Belum ada aktivitas di periode ini</div>';return;}
+  el.innerHTML=data.map(log=>{
+    const icon=LOG_ICONS[log.tipe]||'ti-point';
+    const color=LOG_COLORS[log.tipe]||'var(--text2)';
+    const tgl=new Date(log.created_at);
+    const timeStr=tgl.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    const dateStr=tgl.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+    const isToday=tgl.toDateString()===now.toDateString();
+    return `<div class="ledger-item">
+      <div class="ledger-icon" style="background:transparent;border:1px solid var(--border)">
+        <i class="ti ${icon}" style="color:${color}"></i>
+      </div>
+      <div class="list-info">
+        <div class="list-title" style="font-size:13px">${log.deskripsi}</div>
+        <div class="list-sub">${isToday?timeStr:dateStr+' '+timeStr}</div>
+      </div>
+      ${log.nilai?`<div style="font-size:12px;font-weight:600;color:${log.tipe==='kerugian'||log.tipe==='void'?'var(--red)':'var(--green)'}">
+        ${log.tipe==='kerugian'||log.tipe==='void'?'-':''}${fmtRp(log.nilai)}
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// RIWAYAT TRANSAKSI
+
+function initRiwayat(){
+  const today=new Date().toISOString().slice(0,10);
+  const elF=document.getElementById('riwayatFrom');
+  const elT=document.getElementById('riwayatTo');
+  if(elF&&!elF.value){ elF.value=today; elT.value=today; }
+  loadRiwayat();
+}
+
+function setRiwayatPeriod(p,el){
+  document.querySelectorAll('#riwayatPeriodTags .tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); RS.period=p;
+  document.getElementById('riwayatCustomRange').style.display=p==='custom'?'block':'none';
+  if(p!=='custom') loadRiwayat();
+}
+
+function getRiwayatRange(){
+  const now=new Date();
+  let from,to;
+  if(RS.period==='today'){
+    from=new Date(now); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else if(RS.period==='week'){
+    from=new Date(now); from.setDate(from.getDate()-from.getDay()); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else if(RS.period==='month'){
+    from=new Date(now.getFullYear(),now.getMonth(),1,0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+  } else {
+    const f=document.getElementById('riwayatFrom')?.value||now.toISOString().slice(0,10);
+    const t=document.getElementById('riwayatTo')?.value||now.toISOString().slice(0,10);
+    from=new Date(f+'T00:00:00'); to=new Date(t+'T23:59:59');
+  }
+  return {from,to};
+}
+
+async function loadRiwayat(){
+  const list=document.getElementById('riwayatList');
+  const summary=document.getElementById('riwayatSummary');
+  list.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i>Memuat...</div>';
+  if(summary) summary.style.display='none';
+  const {from,to}=getRiwayatRange();
+  const {data,error}=await sb.from('transactions')
+    .select('id, total, hpp, payment_method, created_at, voided, transaction_items(barang_id, qty, harga_jual, hpp)')
+    .eq('warung_id',S.warungId)
+    .gte('created_at',from.toISOString())
+    .lte('created_at',to.toISOString())
+    .order('created_at',{ascending:false});
+  if(error){list.innerHTML='<div class="empty"><i class="ti ti-alert-circle"></i>Gagal: '+error.message+'</div>';return;}
+  const active=(data||[]).filter(t=>!t.voided);
+  const voidedCount=(data||[]).filter(t=>t.voided).length;
+  if(!data?.length){list.innerHTML='<div class="empty"><i class="ti ti-receipt"></i>Tidak ada transaksi di periode ini</div>';return;}
+  // Summary
+  const totalOmzet=active.reduce((s,t)=>s+Number(t.total),0);
+  const totalHpp=active.reduce((s,t)=>s+Number(t.hpp),0);
+  const totalItems=active.reduce((s,t)=>s+(t.transaction_items||[]).reduce((x,it)=>x+it.qty,0),0);
+  if(summary){
+    summary.style.display='block';
+    document.getElementById('rSum1').textContent=fmtRp(totalOmzet);
+    const profEl=document.getElementById('rSum2');
+    const profit=totalOmzet-totalHpp;
+    profEl.textContent=fmtRp(profit);
+    profEl.className='stat-val '+(profit>=0?'g':'r');
+    document.getElementById('rSum3').textContent=active.length+' transaksi';
+    document.getElementById('rSum4').textContent=totalItems+' item';
+  }
+  const payIcon={Cash:'ti-cash',QRIS:'ti-qrcode',Transfer:'ti-building-bank',Lainnya:'ti-dots'};
+  list.innerHTML=active.map(t=>{
+    const items=(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0);
+    const txProfit=Number(t.total)-Number(t.hpp);
+    return `<div class="list-item" style="cursor:pointer" onclick="openTxDetail('${t.id}')">
+      <div style="width:32px;height:32px;border-radius:var(--r8);background:var(--blue-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="ti ${payIcon[t.payment_method]||'ti-shopping-cart'}" style="color:var(--blue);font-size:14px"></i>
+      </div>
+      <div class="list-info">
+        <div class="list-title">${new Date(t.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="list-sub">${items} item · ${t.payment_method}</div>
+      </div>
+      <div class="list-right">
+        <div style="font-weight:600;color:var(--green)">${fmtRp(Number(t.total))}</div>
+        <div style="font-size:11px;color:${txProfit>=0?'var(--text2)':'var(--red)'}">Profit ${fmtRp(txProfit)}</div>
+      </div>
+    </div>`;
+  }).join('')
+  +(voidedCount?`<div style="padding:8px 0;text-align:center;font-size:11px;color:var(--text3);border-top:1px solid var(--border);margin-top:4px">${voidedCount} transaksi dibatalkan tidak ditampilkan</div>`:'');
+  window._riwayatData=data;
+}
+
+function openTxDetail(id){
+  const t=window._riwayatData?.find(x=>x.id===id);
+  if(!t) return;
+  const items=t.transaction_items||[];
+  const txProfit=Number(t.total)-Number(t.hpp);
+  document.getElementById('txDetailContent').innerHTML=`
+    <div class="info-row"><span class="info-label">Tanggal</span><span style="font-size:12px">${new Date(t.created_at).toLocaleString('id-ID')}</span></div>
+    <div class="info-row"><span class="info-label">Metode Bayar</span><span>${t.payment_method}</span></div>
+    <div class="info-row"><span class="info-label">Total Penjualan</span><span style="font-weight:700;color:var(--green)">${fmtRp(Number(t.total))}</span></div>
+    <div class="info-row"><span class="info-label">HPP</span><span>${fmtRp(Number(t.hpp))}</span></div>
+    <div class="info-row"><span class="info-label">Profit</span><span style="font-weight:700;color:${txProfit>=0?'var(--green)':'var(--red)'}">${fmtRp(txProfit)}</span></div>
+    <div style="margin:12px 0 6px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px">Barang yang dijual</div>
+    ${items.length
+      ? items.map(it=>{
+          const b=S.barang.find(x=>x.id===it.barang_id);
+          const nama=b?.nama||'(barang dihapus)';
+          const subtotal=it.qty*Number(it.harga_jual);
+          const hppItem=Number(it.hpp)||0;
+          const profitItem=subtotal-hppItem;
+          return `<div class="list-item">
+            <div class="list-info">
+              <div class="list-title">${nama}</div>
+              <div class="list-sub">${it.qty} pcs × ${fmtRp(Number(it.harga_jual))}</div>
+            </div>
+            <div class="list-right">
+              <div style="font-weight:600">${fmtRp(subtotal)}</div>
+              <div style="font-size:11px;color:var(--text2)">Profit ${fmtRp(profitItem)}</div>
+            </div>
+          </div>`;
+        }).join('')
+      : '<div class="empty" style="padding:12px"><i class="ti ti-info-circle"></i>Detail item belum tersedia</div>'
+    }
+    ${!t.voided&&t.id?`<button class="btn danger" style="margin-top:14px" onclick="closeOverlay(\'modalTxDetail\');openVoid({dbId:\'${t.id}\',total:${t.total},hpp:${t.hpp},ts:${new Date(t.created_at).getTime()},payment:\'${t.payment_method}\'})"><i class="ti ti-ban"></i>Batalkan Transaksi Ini</button>`:''}`;
+  openOverlay('modalTxDetail');
 }
 
 const OB = {
@@ -2833,6 +3208,7 @@ async function pulihkanBarang(id,nama){
     });
   }
   renderArsip();
+  logActivity('pulihkan_barang',`Barang dipulihkan: ${nama}`);
   showToast(nama+' berhasil dipulihkan ✓');
 }
 
