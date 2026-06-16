@@ -215,6 +215,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sku-item-kat{font-size:11px;color:var(--text2)}
 .sku-wrap{position:relative}
 
+/* EXPIRED SCREEN */
+#expiredScreen{display:none;position:fixed;inset:0;z-index:290;background:var(--bg3);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;opacity:0;transition:opacity .3s ease}
+#expiredScreen.visible{opacity:1}
+
+/* TRIAL BANNER */
+.trial-banner{margin:0 14px 0;border-radius:var(--r8);padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:13px}
+.trial-banner.warning{background:var(--amber-bg);border:1px solid var(--amber);color:var(--amber)}
+.trial-banner.danger{background:var(--red-bg);border:1px solid var(--red);color:var(--red)}
+.trial-banner i{font-size:18px;flex-shrink:0}
+.trial-banner-text{flex:1;line-height:1.4}
+.trial-banner-text b{display:block;font-weight:700;margin-bottom:1px}
+
 /* ONBOARDING */
 #onboardingScreen{display:none;position:fixed;inset:0;z-index:280;background:var(--bg3);flex-direction:column;overflow-y:auto}
 .ob-header{background:var(--brand);padding:20px 20px 28px;color:#fff}
@@ -273,6 +285,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div style="font-size:13px;color:var(--text2)" id="loadingMsg">Memuat...</div>
 </div>
 
+<!-- EXPIRED SCREEN -->
+<div id="expiredScreen">
+  <div style="font-size:56px;margin-bottom:16px">🔒</div>
+  <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">Akses Berakhir</div>
+  <div style="font-size:13px;color:var(--text2);max-width:280px;line-height:1.7;margin-bottom:28px" id="expiredMsg">
+    Masa trial lo sudah habis. Upgrade ke <b>Jagoan Warung Lengkap</b> untuk tetap akses semua fitur.
+  </div>
+
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r16);padding:20px;max-width:300px;width:100%;margin-bottom:24px;text-align:left">
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">Jagoan Warung Lengkap</div>
+    <div style="font-size:32px;font-weight:800;color:var(--brand);margin-bottom:4px">Rp 99.000<span style="font-size:14px;font-weight:400;color:var(--text2)">/bulan</span></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px">= 3 bungkus rokok per bulan</div>
+    <div style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--text)">
+      <div>✓ Semua fitur tanpa batas</div>
+      <div>✓ FIFO + ABC Analysis</div>
+      <div>✓ Export PDF & Excel</div>
+      <div>✓ Data warung aman di cloud</div>
+    </div>
+  </div>
+
+  <div style="font-size:13px;color:var(--text2);line-height:1.7;max-width:280px">
+    Hubungi kami untuk upgrade:<br>
+    <b style="color:var(--text)">karyawansakti.com</b>
+  </div>
+
+  <button class="btn" style="margin-top:20px;max-width:280px" onclick="logout()">
+    <i class="ti ti-logout"></i>Ganti Akun
+  </button>
+</div>
+
 <!-- ONBOARDING -->
 <div id="onboardingScreen">
   <div class="ob-header">
@@ -305,6 +347,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="welcome-greeting" id="greetingText">Halo, Juragan 👋</div>
     <div class="welcome-date" id="dashDate"></div>
   </div>
+  <div id="trialBanner"></div>
   <div class="content">
 
     <!-- PERIODE -->
@@ -830,6 +873,7 @@ const S = {
   period: 'today',
   periodFrom: null,
   periodTo: null,
+  accessStatus: null,
 };
 
 // ═══════════════════════════════════════
@@ -1138,6 +1182,7 @@ function closeOverlay(id){ document.getElementById(id).classList.remove('open');
 // DASHBOARD
 // ═══════════════════════════════════════
 function renderDashboard(){
+  if(S.accessStatus) renderTrialBanner(S.accessStatus);
   const todayTx = S.transactions;
   const penjualan = todayTx.reduce((s,t)=>s+t.total,0);
   const hpp = todayTx.reduce((s,t)=>s+t.hpp,0);
@@ -2302,7 +2347,9 @@ async function saveWarungName(){
 }
 
 async function getOrCreateWarung(userId){
-  const sel=await sb.from('warungs').select('*').eq('owner_id',userId).maybeSingle();
+  const sel=await sb.from('warungs')
+    .select('id, nama_warung, onboarding_done, trial_ends_at, subscription_expires_at, owner_id')
+    .eq('owner_id',userId).maybeSingle();
   if(sel.error){
     showToast('Select error: '+sel.error.message, 6000);
     return null;
@@ -2504,6 +2551,52 @@ async function konfirmasiVoid(){
   renderDashboard();
   showToast('Transaksi dibatalkan. Stok sudah dikembalikan ✓');
 }
+// ═══════════════════════════════════════
+// SUBSCRIPTION & ACCESS CONTROL
+// ═══════════════════════════════════════
+function getAccessStatus(warung){
+  const now=Date.now();
+  const subExp=warung.subscription_expires_at
+    ? new Date(warung.subscription_expires_at).getTime() : 0;
+  const trialExp=warung.trial_ends_at
+    ? new Date(warung.trial_ends_at).getTime() : 0;
+  if(subExp>now) return {status:'subscribed',daysLeft:null};
+  if(trialExp>now){
+    const daysLeft=Math.ceil((trialExp-now)/86400000);
+    return {status:'trial',daysLeft};
+  }
+  return {status:'expired',daysLeft:0};
+}
+
+function showExpired(warung){
+  const hasHadSub=warung.subscription_expires_at;
+  const msg=hasHadSub
+    ? 'Langganan lo sudah berakhir. Perpanjang untuk tetap akses semua fitur Jagoan Warung.'
+    : 'Masa trial 90 hari lo sudah habis. Upgrade ke Jagoan Warung Lengkap untuk tetap berjualan.';
+  document.getElementById('expiredMsg').innerHTML=
+    msg+'<br><br><span style="font-size:12px">Data warung lo tetap aman.</span>';
+  const el=document.getElementById('expiredScreen');
+  el.style.display='flex';
+  requestAnimationFrame(()=>el.classList.add('visible'));
+}
+
+function renderTrialBanner(access){
+  const el=document.getElementById('trialBanner');
+  if(!el) return;
+  if(access.status!=='trial'||access.daysLeft>14){el.innerHTML='';return;}
+  const d=access.daysLeft;
+  const isDanger=d<=5;
+  const cls=isDanger?'danger':'warning';
+  const icon=isDanger?'ti-alert-circle':'ti-clock';
+  const msg=isDanger
+    ? `Trial berakhir dalam <b>${d} hari lagi!</b> Segera upgrade agar warung lo tetap jalan.`
+    : `Trial berakhir dalam <b>${d} hari lagi.</b> Upgrade ke Jagoan Warung Lengkap setelah trial habis.`;
+  el.innerHTML=`<div class="trial-banner ${cls}" style="margin:8px 14px 0">
+    <i class="ti ${icon}" aria-hidden="true"></i>
+    <div class="trial-banner-text"><span>${msg}</span></div>
+  </div>`;
+}
+
 const OB = {
   step: 0,
   namaWarung: '',
@@ -2820,16 +2913,31 @@ async function afterLogin(user){
     if(!warung){ hideLoading(); showLogin(); authHandled=false; return; }
     S.warungId=warung.id;
     S.namaWarung=warung.nama_warung||'Warung Saya';
+
+    // Cek access status SEBELUM load data
+    const access=getAccessStatus(warung);
+    S.accessStatus=access;
+    if(access.status==='expired'){
+      hideLoading();
+      hideLogin();
+      showExpired(warung);
+      return;
+    }
+
     await loadAllData();
     hideLoading();
     hideLogin();
-    // Cek apakah perlu onboarding
+
+    // Cek onboarding
     if(!warung.onboarding_done){
       showOnboarding();
     } else {
       goScreen('dashboard');
       updatePeriodLabel();
     }
+
+    // Tampilkan trial banner kalau perlu
+    renderTrialBanner(access);
   } catch(e) {
     console.error('afterLogin error:', e);
     hideLoading();
