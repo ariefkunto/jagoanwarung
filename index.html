@@ -748,6 +748,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="tag active" onclick="setLogPeriod('today',this)">Hari ini</div>
         <div class="tag" onclick="setLogPeriod('week',this)">Minggu ini</div>
         <div class="tag" onclick="setLogPeriod('month',this)">Bulan ini</div>
+        <div class="tag" onclick="setLogPeriod('custom',this)">Custom</div>
+      </div>
+      <div id="logCustomRange" style="display:none;margin-top:10px">
+        <div class="inp-row">
+          <div class="inp-group"><label>Dari</label><input type="date" id="logFrom"></div>
+          <div class="inp-group"><label>Sampai</label><input type="date" id="logTo"></div>
+        </div>
+        <button class="btn primary sm" style="width:100%;margin-top:8px" onclick="loadLogAktivitas()"><i class="ti ti-search"></i>Tampilkan</button>
       </div>
     </div>
     <button class="btn" onclick="exportLogExcel()"><i class="ti ti-file-spreadsheet"></i>Export Log ke Excel</button>
@@ -2153,34 +2161,51 @@ async function prosesOpname(){
   showSOReport(reportRows, akurasi);
 }
 
+function getLogRange(){
+  const now=new Date();
+  let from,to,label;
+  if(LA.period==='today'){
+    from=new Date(now); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+    label='Hari ini ('+fmtDateShort(from)+')';
+  } else if(LA.period==='week'){
+    from=new Date(now); from.setDate(from.getDate()-from.getDay()); from.setHours(0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+    label='Minggu ini ('+fmtDateShort(from)+' – '+fmtDateShort(to)+')';
+  } else if(LA.period==='month'){
+    from=new Date(now.getFullYear(),now.getMonth(),1,0,0,0,0);
+    to=new Date(now); to.setHours(23,59,59,999);
+    label='Bulan ini ('+now.toLocaleDateString('id-ID',{month:'long',year:'numeric'})+')';
+  } else {
+    // custom
+    const f=document.getElementById('logFrom')?.value||now.toISOString().slice(0,10);
+    const t=document.getElementById('logTo')?.value||now.toISOString().slice(0,10);
+    from=new Date(f+'T00:00:00'); to=new Date(t+'T23:59:59');
+    label='Custom ('+fmtDateShort(from)+' – '+fmtDateShort(to)+')';
+  }
+  return {from,to,label};
+}
+
 async function exportLogExcel(){
   showToast('Menyiapkan export...',3000);
   try{ await loadXLSX(); } catch(e){ showToast('Gagal load library Excel');return; }
   if(typeof XLSX==='undefined'){showToast('Library Excel gagal dimuat');return;}
 
-  const now=new Date();
-  let from,to,periodeLabel;
-  if(LA.period==='today'){
-    from=new Date(now); from.setHours(0,0,0,0);
-    to=new Date(now); to.setHours(23,59,59,999);
-    periodeLabel='Hari ini ('+fmtDateShort(from)+')';
-  } else if(LA.period==='week'){
-    from=new Date(now); from.setDate(from.getDate()-from.getDay()); from.setHours(0,0,0,0);
-    to=new Date(now); to.setHours(23,59,59,999);
-    periodeLabel='Minggu ini ('+fmtDateShort(from)+' – '+fmtDateShort(to)+')';
-  } else {
-    from=new Date(now.getFullYear(),now.getMonth(),1,0,0,0,0);
-    to=new Date(now); to.setHours(23,59,59,999);
-    periodeLabel='Bulan ini ('+now.toLocaleDateString('id-ID',{month:'long',year:'numeric'})+')';
+  if(LA.period==='custom'){
+    const f=document.getElementById('logFrom')?.value;
+    const t=document.getElementById('logTo')?.value;
+    if(!f||!t){showToast('Pilih tanggal dari dan sampai dulu');return;}
+    if(f>t){showToast('Tanggal mulai harus sebelum tanggal akhir');return;}
   }
 
-  // Ambil semua log di periode ini (tanpa limit 200)
+  const {from,to,label:periodeLabel}=getLogRange();
+
   const {data,error}=await sb.from('activity_log')
     .select('*')
     .eq('warung_id',S.warungId)
     .gte('created_at',from.toISOString())
     .lte('created_at',to.toISOString())
-    .order('created_at',{ascending:true}); // ascending untuk audit trail
+    .order('created_at',{ascending:true});
 
   if(error){showToast('Gagal ambil data: '+error.message);return;}
   if(!data?.length){showToast('Tidak ada aktivitas di periode ini');return;}
@@ -2194,8 +2219,6 @@ async function exportLogExcel(){
   };
 
   const wb=XLSX.utils.book_new();
-
-  // SHEET 1: LOG AKTIVITAS
   const rows=[
     [`Log Aktivitas Warung — ${S.namaWarung}`],
     [`Periode: ${periodeLabel}`],
@@ -2214,8 +2237,6 @@ async function exportLogExcel(){
       log.nilai?Number(log.nilai):'',
     ]);
   });
-
-  // Summary di bawah
   rows.push([]);
   rows.push(['RINGKASAN']);
   const tipeCount={};
@@ -2223,15 +2244,16 @@ async function exportLogExcel(){
   Object.entries(tipeCount).forEach(([tipe,count])=>{
     rows.push(['',tipeLabel[tipe]||tipe,'','','Jumlah: '+count]);
   });
-  rows.push([]);
-  rows.push(['','Total aktivitas tercatat','','','',data.length]);
+  rows.push(['','Total aktivitas','','','',data.length]);
 
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  // Set column widths
   ws['!cols']=[{wch:5},{wch:22},{wch:10},{wch:22},{wch:55},{wch:15}];
   XLSX.utils.book_append_sheet(wb,ws,'Log Aktivitas');
 
-  const filename=`LogAktivitas_${S.namaWarung.replace(/\s+/g,'_')}_${LA.period}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const safePeriod=LA.period==='custom'
+    ? (document.getElementById('logFrom')?.value+'_'+document.getElementById('logTo')?.value)
+    : LA.period;
+  const filename=`LogAktivitas_${S.namaWarung.replace(/\s+/g,'_')}_${safePeriod}.xlsx`;
   XLSX.writeFile(wb,filename);
   logActivity('export_excel',`Export Log Aktivitas · ${periodeLabel}`);
   showToast(`Log berhasil diexport (${data.length} baris) ✓`);
@@ -2614,9 +2636,47 @@ async function exportExcel(){
   abcItems.forEach(x=>abcRows.push([x.nama,Math.round(x.rev),Math.round(x.pct*10)/10,Math.round(x.cumPct*10)/10,x.cls]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(abcRows),'ABC Analysis');
 
+  // SHEET 6: LOG AKTIVITAS (periode yang sama dengan laporan)
+  const {from:lFrom,to:lTo}=getLaporanRange();
+  const {data:logData}=await sb.from('activity_log')
+    .select('*')
+    .eq('warung_id',S.warungId)
+    .gte('created_at',lFrom.toISOString())
+    .lte('created_at',lTo.toISOString())
+    .order('created_at',{ascending:true});
+
+  const tipeLabel={
+    jual:'Penjualan', belanja:'Belanja Masuk', barang_baru:'Tambah Barang',
+    edit_barang:'Edit Barang', arsip_barang:'Arsip Barang', pulihkan_barang:'Pulihkan Barang',
+    opname:'Stock Opname / Koreksi', kerugian:'Kerugian Inventory', retur:'Retur Customer',
+    void:'Batal Transaksi', suspend:'Suspend Keranjang',
+    export_excel:'Export Excel', export_pdf:'Export PDF',
+  };
+  const logRows=[
+    [`Log Aktivitas — ${S.namaWarung}`],
+    [`Periode: ${periodStr()}`],
+    [],
+    ['No','Tanggal','Jam','Tipe Aktivitas','Deskripsi','Nilai (Rp)'],
+  ];
+  (logData||[]).forEach((log,i)=>{
+    const tgl=new Date(log.created_at);
+    logRows.push([
+      i+1,
+      tgl.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
+      tgl.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),
+      tipeLabel[log.tipe]||log.tipe,
+      log.deskripsi,
+      log.nilai?Number(log.nilai):'',
+    ]);
+  });
+  if(!logData?.length) logRows.push(['','(tidak ada aktivitas di periode ini)']);
+  const logWs=XLSX.utils.aoa_to_sheet(logRows);
+  logWs['!cols']=[{wch:5},{wch:22},{wch:8},{wch:22},{wch:50},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,logWs,'Log Aktivitas');
+
   XLSX.writeFile(wb,`Laporan_JagoanWarung_${periodStr().replace(/ /g,'_').replace(/\./g,'')}.xlsx`);
   logActivity('export_excel',`Export Excel didownload · Periode: ${periodStr()}`);
-  showToast('Excel berhasil didownload! 5 sheet tersedia.');
+  showToast('Excel berhasil didownload! 6 sheet tersedia.');
 }
 
 async function exportPDF(){
@@ -3134,6 +3194,15 @@ function initLogAktivitas(){ loadLogAktivitas(); }
 function setLogPeriod(p,el){
   document.querySelectorAll('#logPeriodTags .tag').forEach(t=>t.classList.remove('active'));
   el.classList.add('active'); LA.period=p;
+  const cr=document.getElementById('logCustomRange');
+  if(p==='custom'){
+    cr.style.display='block';
+    const today=new Date().toISOString().slice(0,10);
+    if(!document.getElementById('logFrom').value) document.getElementById('logFrom').value=today;
+    if(!document.getElementById('logTo').value) document.getElementById('logTo').value=today;
+    return; // tunggu user klik Tampilkan
+  }
+  cr.style.display='none';
   loadLogAktivitas();
 }
 
@@ -3141,18 +3210,7 @@ async function loadLogAktivitas(){
   const el=document.getElementById('logList');
   if(!el) return;
   el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i>Memuat...</div>';
-  const now=new Date();
-  let from,to;
-  if(LA.period==='today'){
-    from=new Date(now); from.setHours(0,0,0,0);
-    to=new Date(now); to.setHours(23,59,59,999);
-  } else if(LA.period==='week'){
-    from=new Date(now); from.setDate(from.getDate()-from.getDay()); from.setHours(0,0,0,0);
-    to=new Date(now); to.setHours(23,59,59,999);
-  } else {
-    from=new Date(now.getFullYear(),now.getMonth(),1,0,0,0,0);
-    to=new Date(now); to.setHours(23,59,59,999);
-  }
+  const {from,to}=getLogRange();
   const {data,error}=await sb.from('activity_log')
     .select('*')
     .eq('warung_id',S.warungId)
@@ -3162,6 +3220,7 @@ async function loadLogAktivitas(){
     .limit(200);
   if(error){el.innerHTML='<div class="empty"><i class="ti ti-alert-circle"></i>Gagal: '+error.message+'</div>';return;}
   if(!data?.length){el.innerHTML='<div class="empty"><i class="ti ti-activity"></i>Belum ada aktivitas di periode ini</div>';return;}
+  const now=new Date();
   el.innerHTML=data.map(log=>{
     const icon=LOG_ICONS[log.tipe]||'ti-point';
     const color=LOG_COLORS[log.tipe]||'var(--text2)';
