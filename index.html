@@ -2510,21 +2510,38 @@ async function loadLaporanData(){
 
   prev.innerHTML=`
     <div class="card-title">Preview laporan</div>
-    <div class="section-label" style="margin-bottom:6px">Penjualan</div>
+    <div style="display:flex;align-items:center;gap:8px;background:var(--green-bg);border-left:3px solid var(--green);border-radius:0 var(--r8) var(--r8) 0;padding:7px 12px;margin:10px 0 8px">
+      <i class="ti ti-shopping-cart" style="color:var(--green);font-size:15px"></i>
+      <span style="font-weight:700;font-size:13px;color:var(--green)">Penjualan</span>
+    </div>
     <div class="info-row"><span class="info-label">Total Omzet</span><span style="font-weight:700;color:var(--green)">${fmtRp(totalPenjualan)}</span></div>
     <div class="info-row"><span class="info-label">HPP Terjual</span><span>${fmtRp(totalHpp)}</span></div>
     <div class="info-row"><span class="info-label">Kerugian Inventory</span><span style="color:var(--red)">${fmtRp(totalLoss)}</span></div>
     <div class="info-row"><span class="info-label">Keuntungan Dagang</span><span style="font-weight:700;color:${profit>=0?'var(--green)':'var(--red)'}">${fmtRp(profit)}</span></div>
-    <div class="info-row" style="margin-bottom:8px"><span class="info-label">Margin</span><span>${totalPenjualan?Math.round(profit/totalPenjualan*100):0}%</span></div>
-    <div class="section-label" style="margin:8px 0 6px">Breakdown pembayaran</div>
+    <div class="info-row" style="margin-bottom:4px"><span class="info-label">Margin</span><span style="font-weight:600">${totalPenjualan?Math.round(profit/totalPenjualan*100):0}%</span></div>
+
+    <div style="display:flex;align-items:center;gap:8px;background:var(--blue-bg);border-left:3px solid var(--blue);border-radius:0 var(--r8) var(--r8) 0;padding:7px 12px;margin:10px 0 8px">
+      <i class="ti ti-credit-card" style="color:var(--blue);font-size:15px"></i>
+      <span style="font-weight:700;font-size:13px;color:var(--blue)">Breakdown Pembayaran</span>
+    </div>
     ${Object.entries(payBreak).filter(([,v])=>v>0).map(([k,v])=>`<div class="info-row"><span class="info-label">${k}</span><span>${fmtRp(v)}</span></div>`).join('')}
-    <div class="section-label" style="margin:8px 0 6px">Stok & Inventory</div>
-    <div class="info-row"><span class="info-label">Total SKU</span><span>${stokData.length}</span></div>
+    ${Object.entries(payBreak).every(([,v])=>v===0)?'<div style="font-size:12px;color:var(--text3);padding:4px 0">Belum ada transaksi</div>':''}
+
+    <div style="display:flex;align-items:center;gap:8px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 var(--r8) var(--r8) 0;padding:7px 12px;margin:10px 0 8px">
+      <i class="ti ti-package" style="color:var(--amber);font-size:15px"></i>
+      <span style="font-weight:700;font-size:13px;color:var(--amber)">Stok & Inventory</span>
+    </div>
+    <div class="info-row"><span class="info-label">Total SKU Aktif</span><span>${stokData.length} produk</span></div>
     <div class="info-row"><span class="info-label">Nilai Stok (Modal)</span><span style="font-weight:700">${fmtRp(nilaiStok)}</span></div>
-    <div class="section-label" style="margin:8px 0 6px">ABC Analysis</div>
-    <div class="info-row"><span class="info-label">Kelas A</span><span>${abcItems.filter(x=>x.cls==='A').length} SKU</span></div>
-    <div class="info-row"><span class="info-label">Kelas B</span><span>${abcItems.filter(x=>x.cls==='B').length} SKU</span></div>
-    <div class="info-row"><span class="info-label">Kelas C</span><span>${abcItems.filter(x=>x.cls==='C').length} SKU</span></div>`;
+    <div class="info-row" style="margin-bottom:4px"><span class="info-label">SKU Habis (stok=0)</span><span style="color:var(--red)">${stokData.filter(x=>x.stok===0).length} produk</span></div>
+
+    <div style="display:flex;align-items:center;gap:8px;background:var(--red-bg);border-left:3px solid var(--red);border-radius:0 var(--r8) var(--r8) 0;padding:7px 12px;margin:10px 0 8px">
+      <i class="ti ti-chart-bar" style="color:var(--red);font-size:15px"></i>
+      <span style="font-weight:700;font-size:13px;color:var(--red)">ABC Analysis</span>
+    </div>
+    <div class="info-row"><span class="info-label">Kelas A <span style="color:var(--text3);font-size:10px">(80% omzet)</span></span><span style="color:var(--green);font-weight:600">${abcItems.filter(x=>x.cls==='A').length} SKU</span></div>
+    <div class="info-row"><span class="info-label">Kelas B <span style="color:var(--text3);font-size:10px">(15% omzet)</span></span><span style="color:var(--blue);font-weight:600">${abcItems.filter(x=>x.cls==='B').length} SKU</span></div>
+    <div class="info-row"><span class="info-label">Kelas C <span style="color:var(--text3);font-size:10px">(5% omzet)</span></span><span style="color:var(--text2);font-weight:600">${abcItems.filter(x=>x.cls==='C').length} SKU</span></div>`;
 }
 
 function initLaporan(){
@@ -3124,27 +3141,47 @@ async function logActivity(tipe, deskripsi, nilai=null, refId=null){
 
 // ── POS: Riwayat Jual Hari Ini ──
 function openPosTxDetail(t){
-  // Pakai modal konfirmasi yang udah ada, isi ulang dengan detail + tombol void
-  document.getElementById('konfirmasiContent').innerHTML=`
-    <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${new Date(t.ts).toLocaleString('id-ID')}</div>
-    <div class="info-row"><span class="info-label">Total</span><span style="font-weight:700;color:var(--green)">${fmtRp(t.total)}</span></div>
-    <div class="info-row"><span class="info-label">HPP</span><span>${fmtRp(t.hpp)}</span></div>
-    <div class="info-row"><span class="info-label">Profit</span><span style="font-weight:700;color:var(--brand)">${fmtRp(t.total-t.hpp)}</span></div>
+  // Tampilkan modal detail transaksi (bukan reuse modal konfirmasi)
+  const prof=Number(t.total)-Number(t.hpp);
+  document.getElementById('txDetailContent').innerHTML=`
+    <div class="info-row"><span class="info-label">Waktu</span><span style="font-size:12px">${new Date(t.ts).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</span></div>
     <div class="info-row"><span class="info-label">Metode</span><span>${t.payment}</span></div>
-    <div class="info-row"><span class="info-label">Jumlah item</span><span>${t.items} item</span></div>
-    <div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:var(--r8);padding:10px 12px;font-size:12px;color:var(--amber);margin-top:8px;line-height:1.5">
-      ⚠️ <b>Batalkan</b> akan menghapus transaksi ini dari laporan dan mengembalikan stok semua barang.
-    </div>`;
-  // Override tombol konfirmasi jadi tombol void
-  const btn=document.querySelector('#modalKonfirmasi .btn.primary');
-  const origOnclick=btn.getAttribute('onclick');
-  btn.innerHTML='<i class="ti ti-ban"></i>Batalkan Transaksi';
-  btn.className='btn danger';
-  btn.onclick=()=>{ btn.className='btn primary'; btn.innerHTML='<i class="ti ti-check"></i>Ya, Proses Sekarang'; btn.onclick=konfirmasiJual; closeOverlay('modalKonfirmasi'); openVoid(t); };
-  // Tombol batal
-  const cancelBtn=document.querySelector('#modalKonfirmasi .btn:not(.primary):not(.danger)');
-  if(cancelBtn) cancelBtn.onclick=()=>{ btn.className='btn primary'; btn.innerHTML='<i class="ti ti-check"></i>Ya, Proses Sekarang'; btn.onclick=konfirmasiJual; closeOverlay('modalKonfirmasi'); };
-  openOverlay('modalKonfirmasi');
+    <div class="info-row"><span class="info-label">Total</span><span style="font-weight:700;color:var(--green)">${fmtRp(Number(t.total))}</span></div>
+    <div class="info-row"><span class="info-label">HPP</span><span>${fmtRp(Number(t.hpp))}</span></div>
+    <div class="info-row"><span class="info-label">Profit</span><span style="font-weight:700;color:${prof>=0?'var(--brand)':'var(--red)'}">${fmtRp(prof)}</span></div>
+    <div style="margin:12px 0 6px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Barang Terjual</div>
+    <div id="posTxItems"><div class="empty" style="padding:8px"><i class="ti ti-loader-2"></i>Memuat...</div></div>
+    ${!t.voided?`<button class="btn danger" style="margin-top:12px" onclick="closeOverlay('modalTxDetail');openVoid(${JSON.stringify(t).replace(/"/g,'&quot;')})"><i class="ti ti-ban"></i>Batalkan Transaksi</button>`:''}`;
+  openOverlay('modalTxDetail');
+
+  // Fetch items async
+  sb.from('transaction_items')
+    .select('barang_id, qty, harga_jual, hpp')
+    .eq('transaction_id',t.dbId||t.id)
+    .then(({data,error})=>{
+      const el=document.getElementById('posTxItems');
+      if(!el) return;
+      if(error||!data?.length){
+        el.innerHTML='<div class="empty" style="padding:8px"><i class="ti ti-info-circle"></i>Detail item tidak tersedia</div>';
+        return;
+      }
+      el.innerHTML=data.map(it=>{
+        const b=S.barang.find(x=>x.id===it.barang_id);
+        const nama=b?.nama||'(barang dihapus)';
+        const subtotal=it.qty*Number(it.harga_jual);
+        const profItem=subtotal-(Number(it.hpp)||0);
+        return `<div class="list-item">
+          <div class="list-info">
+            <div class="list-title" style="font-size:13px">${nama}</div>
+            <div class="list-sub">${it.qty} pcs × ${fmtRp(Number(it.harga_jual))}</div>
+          </div>
+          <div class="list-right">
+            <div style="font-weight:600">${fmtRp(subtotal)}</div>
+            <div style="font-size:11px;color:var(--text2)">Profit ${fmtRp(profItem)}</div>
+          </div>
+        </div>`;
+      }).join('');
+    });
 }
 
 async function renderPosToday(){
@@ -3153,7 +3190,7 @@ async function renderPosToday(){
   if(!el) return;
   const todayStart=new Date(); todayStart.setHours(0,0,0,0);
   const {data,error}=await sb.from('transactions')
-    .select('total, hpp, payment_method, created_at, transaction_items(qty)')
+    .select('id, total, hpp, payment_method, created_at, transaction_items(qty)')
     .eq('warung_id',S.warungId)
     .eq('voided',false)
     .gte('created_at',todayStart.toISOString())
@@ -3170,7 +3207,7 @@ async function renderPosToday(){
     const items=(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0);
     const txData=JSON.stringify({
       dbId:t.id, total:Number(t.total), hpp:Number(t.hpp),
-      ts:new Date(t.created_at).getTime(), payment:t.payment_method, items
+      ts:new Date(t.created_at).getTime(), payment:t.payment_method, items, voided:false
     }).replace(/"/g,'&quot;');
     return `<div class="ledger-item" style="cursor:pointer" onclick="openPosTxDetail(${txData})">
       <div class="ledger-icon pos"><i class="ti ${payIcon[t.payment_method]||'ti-shopping-cart'}"></i></div>
