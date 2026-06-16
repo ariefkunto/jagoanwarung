@@ -215,11 +215,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sku-item-kat{font-size:11px;color:var(--text2)}
 .sku-wrap{position:relative}
 
+/* ONBOARDING */
+#onboardingScreen{display:none;position:fixed;inset:0;z-index:280;background:var(--bg3);flex-direction:column;overflow-y:auto}
+.ob-header{background:var(--brand);padding:20px 20px 28px;color:#fff}
+.ob-progress{display:flex;gap:6px;margin-bottom:16px}
+.ob-dot{height:4px;flex:1;border-radius:2px;background:rgba(255,255,255,.3)}
+.ob-dot.active{background:#fff}
+.ob-step-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.ob-step-sub{font-size:13px;opacity:.85;line-height:1.5}
+.ob-body{padding:20px;flex:1;display:flex;flex-direction:column;gap:12px}
+.ob-option{display:flex;align-items:center;gap:14px;background:var(--bg);border:1.5px solid var(--border2);border-radius:var(--r12);padding:14px;cursor:pointer}
+.ob-option.selected{border-color:var(--brand);background:var(--green-bg)}
+.ob-option-icon{font-size:22px;width:44px;height:44px;border-radius:var(--r8);background:var(--bg2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ob-option.selected .ob-option-icon{background:var(--brand);color:#fff}
+.ob-option-label{font-size:14px;font-weight:600}
+.ob-option-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.ob-footer{padding:16px 20px 32px;display:flex;flex-direction:column;gap:8px}
+
 /* LOGIN SCREEN */
-#loginScreen{display:none;position:fixed;inset:0;z-index:300;background:var(--bg3);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+#loginScreen{
+  display:none;position:fixed;inset:0;z-index:300;
+  background:var(--bg3);flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:24px;
+  opacity:0;transition:opacity .3s ease;
+}
+#loginScreen.visible{opacity:1}
 
 /* LOADING OVERLAY */
-#loadingOverlay{display:none;position:fixed;inset:0;z-index:350;background:rgba(0,0,0,.6);align-items:center;justify-content:center;flex-direction:column;color:#fff}
+#loadingOverlay{
+  display:flex;position:fixed;inset:0;z-index:350;
+  background:var(--bg3);align-items:center;justify-content:center;
+  flex-direction:column;color:var(--text2);
+  opacity:1;transition:opacity .25s ease;
+}
+#loadingOverlay.hidden{opacity:0;pointer-events:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{font-size:32px;animation:spin 1s linear infinite}
 </style>
@@ -239,8 +268,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <!-- LOADING OVERLAY -->
 <div id="loadingOverlay">
-  <i class="ti ti-loader-2 spinner"></i>
-  <div style="margin-top:10px;font-size:13px">Memuat data warung...</div>
+  <div style="font-size:48px;margin-bottom:16px">🏪</div>
+  <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Jagoan Warung</div>
+  <div style="font-size:13px;color:var(--text2)" id="loadingMsg">Memuat...</div>
+</div>
+
+<!-- ONBOARDING -->
+<div id="onboardingScreen">
+  <div class="ob-header">
+    <div class="ob-progress" id="obProgress"></div>
+    <div class="ob-step-title" id="obTitle"></div>
+    <div class="ob-step-sub" id="obSub"></div>
+  </div>
+  <div class="ob-body" id="obBody"></div>
+  <div class="ob-footer">
+    <button class="btn primary" id="obNextBtn" onclick="obNext()">Lanjut</button>
+    <button class="btn" id="obSkipBtn" onclick="obSkip()" style="color:var(--text3);border-color:transparent;background:transparent">Lewati</button>
+  </div>
 </div>
 
 <div class="app" id="app">
@@ -412,6 +456,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:11px;color:var(--text2);margin-bottom:2px">Est. Profit</div>
         <div style="font-size:15px;font-weight:600;color:var(--text)" id="cartProfit">Rp 0</div>
       </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="openSuspended()" style="flex:1"><i class="ti ti-history"></i>Tertahan</button>
+      <button class="btn" onclick="suspendCart()" style="flex:1" id="btnSuspend" disabled><i class="ti ti-player-pause"></i>Tahan</button>
     </div>
     <button class="btn primary" onclick="prosesJual()" id="btnJual" disabled><i class="ti ti-check"></i>Proses Transaksi</button>
   </div>
@@ -614,6 +662,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- ══════════════ RETUR CUSTOMER ══════════════ -->
+<div class="screen" id="screen-retur">
+  <div class="content">
+    <div class="card" style="padding:12px 14px">
+      <div style="font-size:12px;color:var(--text2);line-height:1.6">
+        Retur mengembalikan barang ke stok dan mengurangi pendapatan. Stok bertambah dengan harga modal saat ini.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Input retur</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="inp-group"><label>Barang yang diretur</label><select id="returBarang" onchange="previewRetur()"><option value="">-- Pilih barang --</option></select></div>
+        <div class="inp-group"><label>Jumlah (pcs)</label><input type="number" id="returQty" placeholder="0" min="1" oninput="previewRetur()"></div>
+        <div class="inp-group"><label>Harga jual saat transaksi (Rp)</label><input type="number" id="returHarga" placeholder="0" min="0" oninput="previewRetur()"></div>
+        <div class="inp-group"><label>Catatan (opsional)</label><input type="text" id="returNote" placeholder="Alasan retur"></div>
+        <div id="returPreview" style="display:none;background:var(--blue-bg);border-radius:var(--r8);padding:10px 12px;font-size:12px;color:var(--blue)"></div>
+        <button class="btn primary" onclick="prosesRetur()"><i class="ti ti-arrow-back-up"></i>Catat Retur</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Riwayat retur</div>
+      <div id="returRiwayat"><div class="empty" style="padding:16px"><i class="ti ti-history"></i>Belum ada retur</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ NAV BAR (STATIC) ══════════════ -->
 <div class="nav-bar">
   <div class="nav-item active" id="nav-dashboard" onclick="goScreen('dashboard')"><i class="ti ti-home"></i>Home</div>
@@ -631,6 +705,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <i class="ti ti-x modal-close" onclick="closeOverlay('moreMenu')"></i>
     <div class="modal-title">Menu Lainnya</div>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('kerugian')"><i class="ti ti-alert-triangle"></i>Catat Kerugian Inventory</button>
+    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('retur')"><i class="ti ti-arrow-back-up"></i>Retur dari Customer</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('opname')"><i class="ti ti-clipboard-check"></i>Stock Opname</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('restock')"><i class="ti ti-shield-check"></i>Jagoan Warung</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('laporan')"><i class="ti ti-file-spreadsheet"></i>Laporan & Export</button>
@@ -651,7 +726,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<!-- Tambah/Edit Barang -->
+<!-- Suspended Carts -->
+<div class="overlay" id="modalSuspended">
+  <div class="modal">
+    <i class="ti ti-x modal-close" onclick="closeOverlay('modalSuspended')"></i>
+    <div class="modal-title">Transaksi Tertahan</div>
+    <div id="suspendedList"><div class="empty"><i class="ti ti-player-pause"></i>Tidak ada transaksi tertahan</div></div>
+  </div>
+</div>
+
+<!-- Void Transaksi -->
+<div class="overlay" id="modalVoid">
+  <div class="modal">
+    <i class="ti ti-x modal-close" onclick="closeOverlay('modalVoid')"></i>
+    <div class="modal-title" style="color:var(--red)"><i class="ti ti-ban" style="margin-right:6px"></i>Batalkan Transaksi</div>
+    <div id="voidContent"></div>
+    <button class="btn danger" onclick="konfirmasiVoid()"><i class="ti ti-ban"></i>Ya, Batalkan Transaksi</button>
+    <button class="btn" onclick="closeOverlay('modalVoid')">Kembali</button>
+  </div>
+</div>
 <div class="overlay" id="modalBarang">
   <div class="modal">
     <i class="ti ti-x modal-close" onclick="closeOverlay('modalBarang')"></i>
@@ -1001,11 +1094,11 @@ function stockAccuracy(){
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
-const secondaryScreens = ['kerugian','opname','restock','notif','laporan','arsip'];
+const secondaryScreens = ['kerugian','opname','restock','notif','laporan','arsip','retur'];
 const screenLabel = {
   dashboard:'Asisten Pintar Warung', barang:'Master Barang', pos:'Jual Barang',
   belanja:'Belanja Barang', kerugian:'Catat Kerugian', opname:'Stock Opname',
-  restock:'Jagoan Warung', notif:'Notifikasi', laporan:'Laporan & Export', arsip:'Arsip Barang',
+  restock:'Jagoan Warung', notif:'Notifikasi', laporan:'Laporan & Export', arsip:'Arsip Barang', retur:'Retur dari Customer',
 };
 
 function goScreen(s){
@@ -1033,6 +1126,7 @@ function goScreen(s){
     notif: renderNotif,
     laporan: initLaporan,
     arsip: renderArsip,
+    retur: initRetur,
   };
   if(renders[s]) renders[s]();
 }
@@ -1131,6 +1225,7 @@ function renderDashboard(){
         <div class="list-right">
           <div style="font-weight:600;color:var(--green)">${fmtRp(t.total)}</div>
           <div style="font-size:11px;color:var(--text2)">Profit ${fmtRp(t.total-t.hpp)}</div>
+          ${t.dbId?`<div style="font-size:10px;color:var(--red);cursor:pointer;margin-top:3px" onclick="openVoid(${JSON.stringify(t).replace(/"/g,'&quot;')})">Batalkan</div>`:''}
         </div>
       </div>`).join('')
     : '<div class="empty" style="padding:12px"><i class="ti ti-receipt"></i>Belum ada transaksi</div>';
@@ -1181,10 +1276,12 @@ async function loadPeriodData(){
     .order('created_at',{ascending:false});
   if(te){ showToast('Gagal load transaksi: '+te.message,4000); return; }
   S.transactions=(txData||[]).map(t=>({
+    dbId:t.id,
     total:Number(t.total),hpp:Number(t.hpp),payment:t.payment_method,
     ts:new Date(t.created_at).getTime(),
-    items:(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0)
-  }));
+    items:(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0),
+    voided:t.voided||false
+  })).filter(t=>!t.voided);
 
   const {data:lossData,error:le}=await sb.from('losses')
     .select('nilai, created_at')
@@ -1493,6 +1590,8 @@ function renderCart(){
   pEl.textContent=fmtRp(profit);
   pEl.style.color=profit>=0?'var(--green)':'var(--red)';
   document.getElementById('btnJual').disabled=!S.cart.length;
+  const btnS=document.getElementById('btnSuspend');
+  if(btnS) btnS.disabled=!S.cart.length;
   const ci=document.getElementById('cartItems');
   if(!S.cart.length){ci.innerHTML='<div class="empty" style="padding:16px"><i class="ti ti-shopping-cart"></i>Cari dan pilih barang di atas</div>';return;}
   ci.innerHTML=S.cart.map(c=>{
@@ -1574,7 +1673,7 @@ async function konfirmasiJual(){
     b.soldHistory.push({qty:c.qty,ts});
   }
 
-  S.transactions.unshift({items,total:totalSell,hpp:totalHpp,ts,payment});
+  S.transactions.unshift({dbId:tx.id,items,total:totalSell,hpp:totalHpp,ts,payment,voided:false});
   S.cart=[];
   // reset payment selector to Cash for next transaction
   S.paymentMethod='Cash';
@@ -2041,11 +2140,6 @@ async function exportExcel(){
 async function exportPDF(){
   if(!LS.data){showToast('Muat data dulu');return;}
 
-  // Debug: cek semua kemungkinan global jsPDF
-  console.log('window.jspdf:', typeof window.jspdf);
-  console.log('window.jsPDF:', typeof window.jsPDF);
-  console.log('window.jspdf?.jsPDF:', typeof window.jspdf?.jsPDF);
-
   let jsPDFClass;
   if(window.jspdf?.jsPDF) jsPDFClass=window.jspdf.jsPDF;
   else if(window.jsPDF) jsPDFClass=window.jsPDF;
@@ -2142,22 +2236,38 @@ async function exportPDF(){
     showToast('Error PDF: '+e.message, 6000);
   }
 }
-function showLogin(){ document.getElementById('loginScreen').style.display='flex'; }
-function hideLogin(){ document.getElementById('loginScreen').style.display='none'; }
+function showLogin(){
+  const el=document.getElementById('loginScreen');
+  el.style.display='flex';
+  requestAnimationFrame(()=>{ el.classList.add('visible'); });
+}
+function hideLogin(){
+  const el=document.getElementById('loginScreen');
+  el.classList.remove('visible');
+  setTimeout(()=>{ el.style.display='none'; },300);
+}
+
 let loadingTimeout=null;
-function showLoading(){
-  document.getElementById('loadingOverlay').style.display='flex';
+function showLoading(msg='Memuat data warung...'){
+  const el=document.getElementById('loadingOverlay');
+  document.getElementById('loadingMsg').textContent=msg;
+  el.classList.remove('hidden');
+  el.style.display='flex';
   clearTimeout(loadingTimeout);
   loadingTimeout=setTimeout(()=>{
     hideLoading();
-    showToast('Timeout: gagal konek ke server. Coba refresh.',4000);
+    showToast('Koneksi timeout. Coba refresh halaman.',4000);
     showLogin();
     authHandled=false;
-  },15000);
+  },20000);
 }
 function hideLoading(){
-  document.getElementById('loadingOverlay').style.display='none';
   clearTimeout(loadingTimeout);
+  const el=document.getElementById('loadingOverlay');
+  el.classList.add('hidden');
+  setTimeout(()=>{
+    if(el.classList.contains('hidden')) el.style.display='none';
+  },300);
 }
 
 async function loginWithGoogle(){
@@ -2207,8 +2317,362 @@ async function getOrCreateWarung(userId){
 }
 
 // ═══════════════════════════════════════
-// ARSIP BARANG (SOFT DELETE)
+// RETUR DARI CUSTOMER
 // ═══════════════════════════════════════
+let returRiwayatData=[];
+
+function initRetur(){
+  const sel=document.getElementById('returBarang');
+  sel.innerHTML='<option value="">-- Pilih barang --</option>'+
+    S.barang.map(b=>`<option value="${b.id}">${b.nama} (stok: ${stok(b)})</option>`).join('');
+  loadReturRiwayat();
+}
+
+function previewRetur(){
+  const id=document.getElementById('returBarang').value;
+  const qty=+document.getElementById('returQty').value||0;
+  const harga=+document.getElementById('returHarga').value||0;
+  const pv=document.getElementById('returPreview');
+  if(!id||!qty||!harga){pv.style.display='none';return;}
+  const b=S.barang.find(x=>x.id===id);
+  if(!b){pv.style.display='none';return;}
+  const hpp=avgHpp(b)||0;
+  const refund=qty*harga;
+  pv.style.display='block';
+  pv.innerHTML=`↩ Stok bertambah <b>${qty} pcs</b> · Refund pendapatan <b>${fmtRp(refund)}</b> · HPP modal <b>${fmtRp(hpp)}/pcs</b>`;
+}
+
+async function prosesRetur(){
+  const id=document.getElementById('returBarang').value;
+  const qty=+document.getElementById('returQty').value;
+  const harga=+document.getElementById('returHarga').value||0;
+  const note=document.getElementById('returNote').value.trim();
+  if(!id||!qty){showToast('Barang dan jumlah wajib diisi');return;}
+  const b=S.barang.find(x=>x.id===id); if(!b) return;
+  const hpp=avgHpp(b)||0;
+
+  // Simpan ke DB
+  const {error}=await sb.from('customer_returns').insert({
+    warung_id:S.warungId, barang_id:b.id,
+    qty, harga_jual:harga||b.hargaJual, hpp, note:note||null
+  });
+  if(error){showToast('Gagal simpan retur: '+error.message);return;}
+
+  // Tambah stok kembali (batch baru dengan HPP saat ini)
+  const {data:bt,error:be}=await sb.from('batches').insert({
+    barang_id:b.id, qty, harga_beli:hpp
+  }).select().single();
+  if(!be&&bt) b.batches.push({id:bt.id,qty,hargaBeli:hpp,ts:new Date(bt.created_at).getTime()});
+
+  // Update sold history (kurangi)
+  const lastH=b.soldHistory.findIndex(h=>h.qty>=qty);
+  if(lastH>=0) b.soldHistory[lastH].qty-=qty;
+
+  ['returBarang','returQty','returHarga','returNote'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('returPreview').style.display='none';
+  loadReturRiwayat();
+  renderDashboard();
+  showToast('Retur dicatat! Stok +'+qty+' pcs ✓');
+}
+
+async function loadReturRiwayat(){
+  const {data,error}=await sb.from('customer_returns')
+    .select('*, barang(nama)')
+    .eq('warung_id',S.warungId)
+    .order('created_at',{ascending:false}).limit(10);
+  const r=document.getElementById('returRiwayat');
+  if(error||!data?.length){r.innerHTML='<div class="empty" style="padding:16px"><i class="ti ti-history"></i>Belum ada retur</div>';return;}
+  r.innerHTML=data.map(d=>`
+    <div class="ledger-item">
+      <div class="ledger-icon pos"><i class="ti ti-arrow-back-up"></i></div>
+      <div class="list-info">
+        <div class="list-title">${d.barang?.nama||'-'}</div>
+        <div class="list-sub">${d.qty} pcs · Refund ${fmtRp(d.qty*Number(d.harga_jual))}${d.note?' · '+d.note:''}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);flex-shrink:0">${fmtDt(new Date(d.created_at).getTime())}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// SUSPEND TRANSAKSI
+// ═══════════════════════════════════════
+async function suspendCart(){
+  if(!S.cart.length){showToast('Keranjang kosong');return;}
+  const label=prompt('Label transaksi tertahan (opsional):','Pelanggan '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}))||'Tertahan';
+  const cartData=S.cart.map(c=>({id:c.id,qty:c.qty}));
+  const {error}=await sb.from('suspended_carts').insert({
+    warung_id:S.warungId, label, cart_data:cartData
+  });
+  if(error){showToast('Gagal simpan: '+error.message);return;}
+  S.cart=[];
+  renderCart();
+  showToast('Transaksi ditahan: '+label);
+}
+
+async function openSuspended(){
+  const {data,error}=await sb.from('suspended_carts')
+    .select('*').eq('warung_id',S.warungId)
+    .order('created_at',{ascending:false});
+  const el=document.getElementById('suspendedList');
+  if(error||!data?.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-player-pause"></i>Tidak ada transaksi tertahan</div>';
+  } else {
+    el.innerHTML=data.map(d=>`
+      <div class="list-item">
+        <div class="list-info">
+          <div class="list-title">${d.label}</div>
+          <div class="list-sub">${d.cart_data.length} item · ${fmtDt(new Date(d.created_at).getTime())}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn sm primary" onclick="loadSuspended('${d.id}')"><i class="ti ti-restore"></i>Ambil</button>
+          <button class="btn sm danger" onclick="hapusSuspended('${d.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`).join('');
+  }
+  openOverlay('modalSuspended');
+}
+
+async function loadSuspended(id){
+  const {data,error}=await sb.from('suspended_carts').select('*').eq('id',id).single();
+  if(error){showToast('Gagal ambil: '+error.message);return;}
+  // Merge atau replace cart
+  const incoming=data.cart_data;
+  incoming.forEach(c=>{
+    const ex=S.cart.find(x=>x.id===c.id);
+    if(ex) ex.qty+=c.qty;
+    else S.cart.push({id:c.id,qty:c.qty});
+  });
+  // Hapus dari suspended
+  await sb.from('suspended_carts').delete().eq('id',id);
+  closeOverlay('modalSuspended');
+  renderCart();
+  showToast('Transaksi '+data.label+' diambil ✓');
+}
+
+async function hapusSuspended(id){
+  await sb.from('suspended_carts').delete().eq('id',id);
+  openSuspended(); // refresh list
+}
+
+// ═══════════════════════════════════════
+// VOID / BATAL TRANSAKSI
+// ═══════════════════════════════════════
+let voidTargetTx=null;
+
+function openVoid(tx){
+  voidTargetTx=tx;
+  const profit=tx.total-tx.hpp;
+  document.getElementById('voidContent').innerHTML=`
+    <div style="background:var(--red-bg);border-radius:var(--r8);padding:12px;margin-bottom:12px;font-size:12px;color:var(--red);line-height:1.6">
+      ⚠️ Membatalkan transaksi akan mengembalikan stok semua barang dan menghapus pendapatan dari laporan.
+    </div>
+    <div class="info-row"><span class="info-label">Waktu</span><span>${fmtDt(tx.ts)}</span></div>
+    <div class="info-row"><span class="info-label">Total</span><span style="font-weight:700">${fmtRp(tx.total)}</span></div>
+    <div class="info-row"><span class="info-label">Profit</span><span>${fmtRp(profit)}</span></div>
+    <div class="info-row"><span class="info-label">Metode</span><span>${tx.payment}</span></div>
+    <div class="inp-group" style="margin-top:8px"><label>Alasan void (opsional)</label><input type="text" id="voidNote" placeholder="cth: salah scan, customer batal"></div>`;
+  openOverlay('modalVoid');
+}
+
+async function konfirmasiVoid(){
+  if(!voidTargetTx){return;}
+  const note=document.getElementById('voidNote')?.value.trim()||'';
+
+  // Mark voided di DB
+  const {error}=await sb.from('transactions')
+    .update({voided:true, voided_at:new Date().toISOString(), void_note:note||null})
+    .eq('id',voidTargetTx.dbId);
+  if(error){showToast('Gagal void: '+error.message);return;}
+
+  // Restore stok — ambil transaction_items dulu
+  const {data:items}=await sb.from('transaction_items')
+    .select('barang_id, qty, hpp').eq('transaction_id',voidTargetTx.dbId);
+  for(const it of (items||[])){
+    const b=S.barang.find(x=>x.id===it.barang_id);
+    if(!b) continue;
+    const hppPerUnit=it.qty?Number(it.hpp)/it.qty:0;
+    const {data:bt}=await sb.from('batches').insert({
+      barang_id:b.id, qty:it.qty, harga_beli:hppPerUnit
+    }).select().single();
+    if(bt) b.batches.push({id:bt.id,qty:it.qty,hargaBeli:hppPerUnit,ts:new Date(bt.created_at).getTime()});
+  }
+
+  // Update state lokal
+  S.transactions=S.transactions.filter(t=>t.dbId!==voidTargetTx.dbId);
+  voidTargetTx=null;
+  closeOverlay('modalVoid');
+  renderDashboard();
+  showToast('Transaksi dibatalkan. Stok sudah dikembalikan ✓');
+}
+const OB = {
+  step: 0,
+  namaWarung: '',
+  jenis: '',
+  jumlahSku: '',
+};
+
+const OB_STEPS = [
+  {
+    title: 'Selamat datang di Jagoan Warung! 🎉',
+    sub: 'Kami akan bantu setup warung lo dalam 3 langkah cepat. Mulai yuk!',
+    skipLabel: null,
+    render: ()=>`
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:72px;margin-bottom:16px">🏪</div>
+        <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">${S.userEmail}</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6;max-width:300px;margin:0 auto">
+          Jagoan Warung bantu lo catat stok, hitung profit dengan FIFO, dan tahu kapan harus restock — secara otomatis.
+        </div>
+      </div>`,
+    next: ()=>true,
+  },
+  {
+    title: 'Nama warung lo apa?',
+    sub: 'Ini akan tampil di dashboard dan laporan lo.',
+    skipLabel: 'Pakai nama default',
+    render: ()=>`
+      <div class="inp-group">
+        <label>Nama warung</label>
+        <input type="text" id="obNamaWarung" placeholder="cth: Warung Pak Ucok" value="${OB.namaWarung||S.namaWarung||''}"
+          style="font-size:18px;font-weight:700;padding:14px">
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">Bisa diganti kapan saja di Profil Warung</div>`,
+    next: async ()=>{
+      const val=document.getElementById('obNamaWarung')?.value.trim();
+      OB.namaWarung=val||'Warung Saya';
+      const {error}=await sb.from('warungs').update({nama_warung:OB.namaWarung}).eq('id',S.warungId);
+      if(error){showToast('Gagal simpan nama: '+error.message,4000);return false;}
+      S.namaWarung=OB.namaWarung;
+      return true;
+    },
+  },
+  {
+    title: 'Warung lo jual apa aja?',
+    sub: 'Pilih kategori utama — bisa tambah kategori lain nanti.',
+    skipLabel: 'Lewati',
+    render: ()=>{
+      const opts=[
+        {val:'kelontong',icon:'ti-shopping-bag',label:'Warung Kelontong',sub:'Sembako, makanan, minuman, kebutuhan rumah'},
+        {val:'madura',icon:'ti-clock-24',label:'Warung Madura',sub:'Buka 24 jam, rokok, minuman, snack'},
+        {val:'kantin',icon:'ti-tools-kitchen-2',label:'Kantin / Warteg',sub:'Makanan matang + minuman'},
+        {val:'minimarket',icon:'ti-building-store',label:'Minimarket',sub:'Berbagai kategori produk'},
+      ];
+      return opts.map(o=>`
+        <div class="ob-option ${OB.jenis===o.val?'selected':''}" onclick="obSelectJenis('${o.val}',this)">
+          <div class="ob-option-icon"><i class="ti ${o.icon}"></i></div>
+          <div><div class="ob-option-label">${o.label}</div><div class="ob-option-sub">${o.sub}</div></div>
+        </div>`).join('');
+    },
+    next: ()=>{ return true; },
+  },
+  {
+    title: 'Berapa banyak barang di warung lo?',
+    sub: 'Ini bantu kami siapkan tampilan yang pas buat lo.',
+    skipLabel: 'Lewati',
+    render: ()=>{
+      const opts=[
+        {val:'sedikit',icon:'ti-package',label:'< 50 jenis barang',sub:'Warung kecil, fokus produk utama'},
+        {val:'sedang',icon:'ti-packages',label:'50 – 200 jenis barang',sub:'Warung menengah'},
+        {val:'banyak',icon:'ti-building-warehouse',label:'> 200 jenis barang',sub:'Minimarket / toko lengkap'},
+      ];
+      return opts.map(o=>`
+        <div class="ob-option ${OB.jumlahSku===o.val?'selected':''}" onclick="obSelectSku('${o.val}',this)">
+          <div class="ob-option-icon"><i class="ti ${o.icon}"></i></div>
+          <div><div class="ob-option-label">${o.label}</div><div class="ob-option-sub">${o.sub}</div></div>
+        </div>`).join('');
+    },
+    next: ()=>{ return true; },
+  },
+  {
+    title: 'Semua siap! 🚀',
+    sub: 'Dashboard lo sudah aktif. Yuk mulai tambah barang pertama.',
+    skipLabel: null,
+    render: ()=>`
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="ob-option" style="cursor:default;border-color:var(--green);background:var(--green-bg)">
+          <div class="ob-option-icon" style="background:var(--brand);color:#fff"><i class="ti ti-check"></i></div>
+          <div><div class="ob-option-label">Akun warung aktif</div><div class="ob-option-sub">${S.namaWarung}</div></div>
+        </div>
+        <div class="ob-option" style="cursor:default;border-color:var(--green);background:var(--green-bg)">
+          <div class="ob-option-icon" style="background:var(--brand);color:#fff"><i class="ti ti-check"></i></div>
+          <div><div class="ob-option-label">Database siap</div><div class="ob-option-sub">Data tersimpan aman di cloud</div></div>
+        </div>
+        <div style="background:var(--bg);border:1.5px solid var(--border2);border-radius:var(--r12);padding:14px;margin-top:4px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px">Langkah berikutnya:</div>
+          <div style="font-size:12px;color:var(--text2);line-height:2">
+            1️⃣ Tambah barang di menu <b>Barang</b><br>
+            2️⃣ Catat belanja barang masuk di menu <b>Belanja</b><br>
+            3️⃣ Mulai jual di menu <b>Jual</b><br>
+            4️⃣ Pantau profit di <b>Dashboard</b>
+          </div>
+        </div>
+      </div>`,
+    next: ()=>{ finishOnboarding(); return false; },
+  },
+];
+
+function obSelectJenis(val,el){
+  OB.jenis=val;
+  document.querySelectorAll('#obBody .ob-option').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function obSelectSku(val,el){
+  OB.jumlahSku=val;
+  document.querySelectorAll('#obBody .ob-option').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function obRender(){
+  const step=OB_STEPS[OB.step];
+  const total=OB_STEPS.length;
+  // progress dots
+  document.getElementById('obProgress').innerHTML=
+    Array.from({length:total},(_,i)=>`<div class="ob-dot ${i<=OB.step?'active':''}"></div>`).join('');
+  document.getElementById('obTitle').textContent=step.title;
+  document.getElementById('obSub').textContent=step.sub;
+  document.getElementById('obBody').innerHTML=step.render();
+  // next button label
+  const nextBtn=document.getElementById('obNextBtn');
+  nextBtn.textContent=OB.step===OB_STEPS.length-1?'Mulai sekarang →':'Lanjut →';
+  // skip button
+  const skipBtn=document.getElementById('obSkipBtn');
+  if(step.skipLabel){skipBtn.style.display='block';skipBtn.textContent=step.skipLabel;}
+  else{skipBtn.style.display='none';}
+}
+
+async function obNext(){
+  const step=OB_STEPS[OB.step];
+  const btn=document.getElementById('obNextBtn');
+  btn.disabled=true; btn.textContent='Menyimpan...';
+  const ok=await step.next();
+  btn.disabled=false;
+  if(ok===false) return; // finishOnboarding sudah dipanggil di step terakhir
+  OB.step++;
+  if(OB.step>=OB_STEPS.length){ finishOnboarding(); return; }
+  obRender();
+}
+function obSkip(){
+  OB.step++;
+  if(OB.step>=OB_STEPS.length){ finishOnboarding(); return; }
+  obRender();
+}
+
+function showOnboarding(){
+  OB.step=0; OB.namaWarung=''; OB.jenis=''; OB.jumlahSku='';
+  document.getElementById('onboardingScreen').style.display='flex';
+  obRender();
+}
+function hideOnboarding(){
+  document.getElementById('onboardingScreen').style.display='none';
+}
+async function finishOnboarding(){
+  await sb.from('warungs').update({onboarding_done:true}).eq('id',S.warungId);
+  hideOnboarding();
+  updatePeriodLabel();
+  goScreen('barang');
+  showToast('Setup selesai! Yuk tambah barang pertama 🎉',3500);
+  setTimeout(()=>openAddBarang(),400);
+}
 async function renderArsip(){
   const el=document.getElementById('arsipList');
   el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i>Memuat...</div>';
@@ -2272,7 +2736,6 @@ async function loadAllData(){
     .select('created_at, transaction_items(barang_id, qty)')
     .eq('warung_id',S.warungId)
     .gte('created_at',since);
-  if(hte) console.warn('sold history:', hte.message);
   (histTx||[]).forEach(t=>{
     const ts=new Date(t.created_at).getTime();
     (t.transaction_items||[]).forEach(it=>{
@@ -2289,19 +2752,19 @@ async function loadAllData(){
     .eq('warung_id',S.warungId)
     .gte('created_at',todayStart.toISOString())
     .order('created_at',{ascending:false});
-  if(tte) console.warn('tx today:', tte.message);
   S.transactions=(txToday||[]).map(t=>({
+    dbId:t.id,
     total:Number(t.total), hpp:Number(t.hpp), payment:t.payment_method,
     ts:new Date(t.created_at).getTime(),
-    items:(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0)
-  }));
+    items:(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0),
+    voided:t.voided||false
+  })).filter(t=>!t.voided);
 
   // 4. KERUGIAN HARI INI
   const {data:lossToday,error:lte}=await sb
     .from('losses').select('nilai, created_at')
     .eq('warung_id',S.warungId)
     .gte('created_at',todayStart.toISOString());
-  if(lte) console.warn('loss today:', lte.message);
   S.lossesToday=(lossToday||[]).map(l=>({nilai:Number(l.nilai),ts:new Date(l.created_at).getTime()}));
 
   // 5. RIWAYAT KERUGIAN (10 terakhir)
@@ -2309,7 +2772,6 @@ async function loadAllData(){
     .from('losses').select('*, barang(nama)')
     .eq('warung_id',S.warungId)
     .order('created_at',{ascending:false}).limit(10);
-  if(lre) console.warn('loss recent:', lre.message);
   S.losses=(lossRecent||[]).map(l=>({
     nama:l.barang?.nama||'(barang dihapus)', jenis:l.jenis,
     qty:l.qty, nilai:Number(l.nilai), note:l.note,
@@ -2325,8 +2787,7 @@ async function loadAllData(){
       .select('id, qty, harga_beli, supplier, created_at, barang(nama)')
       .in('barang_id', barangIds)
       .order('created_at',{ascending:false}).limit(10);
-    if(pre) console.warn('purchases:', pre.message);
-    S.purchases=(purchRecent||[]).map(p=>({
+      S.purchases=(purchRecent||[]).map(p=>({
       nama:p.barang?.nama||'', qty:p.qty,
       hargaBeli:Number(p.harga_beli), supplier:p.supplier,
       ts:new Date(p.created_at).getTime()
@@ -2340,7 +2801,6 @@ async function loadAllData(){
     .from('opnames').select('*')
     .eq('warung_id',S.warungId)
     .order('created_at',{ascending:false}).limit(1);
-  if(oe) console.warn('opname:', oe.message);
   S.opnames=(lastOpname||[]).map(o=>({
     ts:new Date(o.created_at).getTime(),
     akurasi:Number(o.akurasi),
@@ -2363,8 +2823,13 @@ async function afterLogin(user){
     await loadAllData();
     hideLoading();
     hideLogin();
-    goScreen('dashboard');
-    updatePeriodLabel();
+    // Cek apakah perlu onboarding
+    if(!warung.onboarding_done){
+      showOnboarding();
+    } else {
+      goScreen('dashboard');
+      updatePeriodLabel();
+    }
   } catch(e) {
     console.error('afterLogin error:', e);
     hideLoading();
@@ -2396,13 +2861,35 @@ if(!sb){
     </div>`;
   showLogin();
 } else {
-  showLoading();
+  const hash=window.location.hash;
+  const search=window.location.search;
+  const isOAuthCallback=
+    hash.includes('access_token') ||
+    hash.includes('error_description') ||
+    search.includes('code=') ||
+    search.includes('error=');
+
+  showLoading(isOAuthCallback?'Memproses login Google...':'Memuat...');
+
+  // Fallback timeout kalau OAuth callback tapi SIGNED_IN ga datang
+  let oauthTimeout=null;
+  if(isOAuthCallback){
+    oauthTimeout=setTimeout(()=>{
+      if(!authHandled){ hideLoading(); showLogin(); }
+    },10000);
+  }
+
   sb.auth.onAuthStateChange((event,session)=>{
-    console.log('auth:', event, !!session);
     if(event==='INITIAL_SESSION'){
-      if(session) afterLogin(session.user);
-      else { hideLoading(); showLogin(); }
+      if(session){
+        clearTimeout(oauthTimeout);
+        afterLogin(session.user);
+      } else if(!isOAuthCallback){
+        hideLoading();
+        showLogin();
+      }
     } else if(event==='SIGNED_IN' && !authHandled){
+      clearTimeout(oauthTimeout);
       afterLogin(session.user);
     } else if(event==='SIGNED_OUT'){
       authHandled=false;
