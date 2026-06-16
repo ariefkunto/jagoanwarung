@@ -7,8 +7,8 @@
 <meta name="description" content="Aplikasi kasir warung dengan FIFO, ABC Analysis, dan rekomendasi restock otomatis.">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://cmjyngxiiivopyztfgbh.supabase.co">
-<link rel="preload" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/fonts/tabler-icons.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/tabler-icons.min.css" media="print" onload="this.onload=null;this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/tabler-icons.min.css"></noscript>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 @font-face{font-family:'tabler-icons';font-display:swap}
@@ -2989,23 +2989,6 @@ document.addEventListener('click',e=>{
   if(dd && !dd.contains(e.target) && e.target.id!=='mNama') dd.style.display='none';
 });
 
-const hash=window.location.hash;
-const search=window.location.search;
-const isOAuthCallback=
-  hash.includes('access_token')||
-  hash.includes('error_description')||
-  search.includes('code=')||
-  search.includes('error=');
-
-// ── OPTIMISTIC RENDER ──
-// Kalau bukan OAuth callback, langsung tampilkan login screen
-// biar LCP cepat. Session dicek di background.
-// Kalau session ditemukan, redirect ke app otomatis.
-if(!isOAuthCallback){
-  hideLoading();
-  if(CONFIG_VALID) showLogin();
-}
-
 waitForSupabase().then(()=>{
   initSb();
   if(!sb || !CONFIG_VALID){
@@ -3021,6 +3004,14 @@ waitForSupabase().then(()=>{
     return;
   }
 
+  const hash=window.location.hash;
+  const search=window.location.search;
+  const isOAuthCallback=
+    hash.includes('access_token')||
+    hash.includes('error_description')||
+    search.includes('code=')||
+    search.includes('error=');
+
   if(isOAuthCallback) showLoading('Memproses login Google...');
 
   let oauthTimeout=null;
@@ -3034,20 +3025,13 @@ waitForSupabase().then(()=>{
     if(event==='INITIAL_SESSION'){
       if(session){
         clearTimeout(oauthTimeout);
-        // Ada session — user sudah login sebelumnya
-        // Sembunyikan login screen, tampilkan loading
-        hideLogin();
-        showLoading('Memuat data warung...');
         afterLogin(session.user);
-      } else if(!isOAuthCallback){
-        // Tidak ada session — biarkan login screen tetap tampil
+      } else {
         hideLoading();
         showLogin();
       }
     } else if(event==='SIGNED_IN' && !authHandled){
       clearTimeout(oauthTimeout);
-      hideLogin();
-      showLoading('Memuat data warung...');
       afterLogin(session.user);
     } else if(event==='SIGNED_OUT'){
       authHandled=false;
