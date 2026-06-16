@@ -1403,7 +1403,7 @@ function renderDashboard(){
       }).join('')
     : '<div class="empty" style="padding:12px"><i class="ti ti-check"></i>Tidak ada rekomendasi</div>';
 
-  // TX list
+  // TX list — dashboard hanya tampil summary bersih, tanpa void button
   const payIcon = {Cash:'ti-cash', QRIS:'ti-qrcode', Transfer:'ti-building-bank', Lainnya:'ti-dots'};
   document.getElementById('txList').innerHTML = todayTx.length
     ? todayTx.slice(0,20).map(t=>`
@@ -1413,7 +1413,6 @@ function renderDashboard(){
         <div class="list-right">
           <div style="font-weight:600;color:var(--green)">${fmtRp(t.total)}</div>
           <div style="font-size:11px;color:var(--text2)">Profit ${fmtRp(t.total-t.hpp)}</div>
-          ${t.dbId?`<div style="font-size:10px;color:var(--red);cursor:pointer;margin-top:3px" onclick="openVoid(${JSON.stringify(t).replace(/"/g,'&quot;')})">Batalkan</div>`:''}
         </div>
       </div>`).join('')
     : '<div class="empty" style="padding:12px"><i class="ti ti-receipt"></i>Belum ada transaksi</div>';
@@ -2853,6 +2852,30 @@ async function logActivity(tipe, deskripsi, nilai=null, refId=null){
 }
 
 // ── POS: Riwayat Jual Hari Ini ──
+function openPosTxDetail(t){
+  // Pakai modal konfirmasi yang udah ada, isi ulang dengan detail + tombol void
+  document.getElementById('konfirmasiContent').innerHTML=`
+    <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${new Date(t.ts).toLocaleString('id-ID')}</div>
+    <div class="info-row"><span class="info-label">Total</span><span style="font-weight:700;color:var(--green)">${fmtRp(t.total)}</span></div>
+    <div class="info-row"><span class="info-label">HPP</span><span>${fmtRp(t.hpp)}</span></div>
+    <div class="info-row"><span class="info-label">Profit</span><span style="font-weight:700;color:var(--brand)">${fmtRp(t.total-t.hpp)}</span></div>
+    <div class="info-row"><span class="info-label">Metode</span><span>${t.payment}</span></div>
+    <div class="info-row"><span class="info-label">Jumlah item</span><span>${t.items} item</span></div>
+    <div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:var(--r8);padding:10px 12px;font-size:12px;color:var(--amber);margin-top:8px;line-height:1.5">
+      ⚠️ <b>Batalkan</b> akan menghapus transaksi ini dari laporan dan mengembalikan stok semua barang.
+    </div>`;
+  // Override tombol konfirmasi jadi tombol void
+  const btn=document.querySelector('#modalKonfirmasi .btn.primary');
+  const origOnclick=btn.getAttribute('onclick');
+  btn.innerHTML='<i class="ti ti-ban"></i>Batalkan Transaksi';
+  btn.className='btn danger';
+  btn.onclick=()=>{ btn.className='btn primary'; btn.innerHTML='<i class="ti ti-check"></i>Ya, Proses Sekarang'; btn.onclick=konfirmasiJual; closeOverlay('modalKonfirmasi'); openVoid(t); };
+  // Tombol batal
+  const cancelBtn=document.querySelector('#modalKonfirmasi .btn:not(.primary):not(.danger)');
+  if(cancelBtn) cancelBtn.onclick=()=>{ btn.className='btn primary'; btn.innerHTML='<i class="ti ti-check"></i>Ya, Proses Sekarang'; btn.onclick=konfirmasiJual; closeOverlay('modalKonfirmasi'); };
+  openOverlay('modalKonfirmasi');
+}
+
 async function renderPosToday(){
   const el=document.getElementById('posTodayList');
   const totalEl=document.getElementById('posTodayTotal');
@@ -2874,7 +2897,11 @@ async function renderPosToday(){
   const payIcon={Cash:'ti-cash',QRIS:'ti-qrcode',Transfer:'ti-building-bank',Lainnya:'ti-dots'};
   el.innerHTML=data.map(t=>{
     const items=(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0);
-    return `<div class="ledger-item">
+    const txData=JSON.stringify({
+      dbId:t.id, total:Number(t.total), hpp:Number(t.hpp),
+      ts:new Date(t.created_at).getTime(), payment:t.payment_method, items
+    }).replace(/"/g,'&quot;');
+    return `<div class="ledger-item" style="cursor:pointer" onclick="openPosTxDetail(${txData})">
       <div class="ledger-icon pos"><i class="ti ${payIcon[t.payment_method]||'ti-shopping-cart'}"></i></div>
       <div class="list-info">
         <div class="list-title">${new Date(t.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</div>
