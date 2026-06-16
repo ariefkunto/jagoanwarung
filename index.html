@@ -621,10 +621,85 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="card-title">Riwayat belanja (10 terakhir)</div>
       <div id="belanjaRiwayat"><div class="empty" style="padding:16px"><i class="ti ti-history"></i>Belum ada catatan</div></div>
     </div>
+
+    <!-- EVENT PREPARATION -->
+    <div class="card">
+      <div class="sec-hdr">
+        <span class="sec-hdr-title">🎯 Persiapan Event</span>
+        <span style="font-size:11px;color:var(--text2)">Rekomendasi stok</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Pilih event mendatang untuk mendapat rekomendasi barang yang perlu distok lebih banyak.</div>
+      <div class="tag-row" id="eventTags" style="flex-wrap:wrap">
+        <div class="tag" onclick="pilihEvent('ramadan',this)">🌙 Ramadan</div>
+        <div class="tag" onclick="pilihEvent('lebaran',this)">🎊 Lebaran</div>
+        <div class="tag" onclick="pilihEvent('agustus',this)">🇮🇩 17 Agustus</div>
+        <div class="tag" onclick="pilihEvent('nataru',this)">🎄 Nataru</div>
+        <div class="tag" onclick="pilihEvent('custom',this)">📅 Custom</div>
+      </div>
+      <div id="eventCustomInput" style="display:none;margin-top:10px">
+        <div class="inp-row">
+          <div class="inp-group"><label>Nama event</label><input type="text" id="eventNama" placeholder="cth: Acara Nikahan"></div>
+          <div class="inp-group"><label>Durasi (hari)</label><input type="number" id="eventDurasi" placeholder="7" min="1" max="60"></div>
+        </div>
+      </div>
+      <div id="eventResult" style="margin-top:12px"></div>
+    </div>
+  </div>
+</div>
+<!-- ══════════════ CATAT KEJADIAN (Kerugian + Retur) ══════════════ -->
+<div class="screen" id="screen-kejadian">
+  <div class="content">
+    <!-- Tab Selector -->
+    <div class="card" style="padding:10px 14px">
+      <div class="tag-row" id="kejadianTabs">
+        <div class="tag active" onclick="switchKejadian('kerugian',this)" style="flex:1;text-align:center">⚠️ Kerugian Inventory</div>
+        <div class="tag" onclick="switchKejadian('retur',this)" style="flex:1;text-align:center">↩️ Retur Customer</div>
+      </div>
+    </div>
+
+    <!-- Panel Kerugian -->
+    <div id="panelKerugian">
+      <div class="card">
+        <div class="card-title">Jenis kerugian</div>
+        <div class="tag-row" id="jenisTags2">
+          <div class="tag active" onclick="pilihJenis2(this,'Barang Rusak')">🔴 Rusak</div>
+          <div class="tag" onclick="pilihJenis2(this,'Barang Expired')">🟡 Expired</div>
+          <div class="tag" onclick="pilihJenis2(this,'Barang Hilang')">⚫ Hilang</div>
+          <div class="tag" onclick="pilihJenis2(this,'Retur Supplier')">🔵 Retur Supplier</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="inp-group"><label>Pilih barang</label><select id="kerugianBarang2"><option value="">-- Pilih barang --</option></select></div>
+          <div class="inp-group"><label>Jumlah (pcs)</label><input type="number" id="kerugianQty2" placeholder="0" min="1" oninput="previewKerugian2()"></div>
+          <div class="inp-group"><label>Catatan (opsional)</label><input type="text" id="kerugianNote2" placeholder="Keterangan tambahan"></div>
+          <div id="kerugianPreview2" style="display:none;background:var(--red-bg);border-radius:var(--r8);padding:10px 12px;font-size:12px;color:var(--red)"></div>
+          <button class="btn danger" onclick="prosesKerugian2()"><i class="ti ti-alert-triangle"></i>Catat Kerugian</button>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">Riwayat kerugian</div><div id="kerugianRiwayat2"><div class="empty" style="padding:16px"><i class="ti ti-history"></i>Belum ada catatan</div></div></div>
+    </div>
+
+    <!-- Panel Retur -->
+    <div id="panelRetur" style="display:none">
+      <div class="card" style="padding:12px 14px">
+        <div style="font-size:12px;color:var(--text2);line-height:1.6">Retur mengembalikan barang ke stok dan mengurangi pendapatan.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="inp-group"><label>Barang yang diretur</label><select id="returBarang2"><option value="">-- Pilih barang --</option></select></div>
+          <div class="inp-group"><label>Jumlah (pcs)</label><input type="number" id="returQty2" placeholder="0" min="1" oninput="previewRetur2()"></div>
+          <div class="inp-group"><label>Harga jual saat transaksi (Rp)</label><input type="number" id="returHarga2" placeholder="0" oninput="previewRetur2()"></div>
+          <div class="inp-group"><label>Catatan (opsional)</label><input type="text" id="returNote2" placeholder="Alasan retur"></div>
+          <div id="returPreview2" style="display:none;background:var(--blue-bg);border-radius:var(--r8);padding:10px 12px;font-size:12px;color:var(--blue)"></div>
+          <button class="btn primary" onclick="prosesRetur2()"><i class="ti ti-arrow-back-up"></i>Catat Retur</button>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">Riwayat retur</div><div id="returRiwayat2"><div class="empty" style="padding:16px"><i class="ti ti-history"></i>Belum ada retur</div></div></div>
+    </div>
   </div>
 </div>
 
-<!-- ══════════════ CATAT KERUGIAN ══════════════ -->
 <div class="screen" id="screen-kerugian">
   <div class="content">
     <div class="card">
@@ -1194,14 +1269,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="modal">
     <i class="ti ti-x modal-close" onclick="closeOverlay('moreMenu')"></i>
     <div class="modal-title">Menu Lainnya</div>
-    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('bantuan')"><i class="ti ti-help-circle"></i>Pusat Bantuan</button>
-    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('logaktivitas')"><i class="ti ti-activity"></i>Log Aktivitas</button>
-    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('kerugian')"><i class="ti ti-alert-triangle"></i>Catat Kerugian Inventory</button>
-    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('retur')"><i class="ti ti-arrow-back-up"></i>Retur dari Customer</button>
-    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('opname')"><i class="ti ti-clipboard-check"></i>Stock Opname</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('restock')"><i class="ti ti-shield-check"></i>Jagoan Warung</button>
+    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('opname')"><i class="ti ti-clipboard-check"></i>Stock Opname</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('laporan')"><i class="ti ti-file-spreadsheet"></i>Laporan & Export</button>
-    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('arsip')"><i class="ti ti-archive"></i>Arsip Barang</button>
+    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('kejadian')"><i class="ti ti-alert-triangle"></i>Catat Kejadian</button>
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('bantuan')"><i class="ti ti-help-circle"></i>Pusat Bantuan</button>
     <button class="btn" onclick="closeOverlay('moreMenu');openProfil()"><i class="ti ti-user-circle"></i>Profil Warung</button>
   </div>
 </div>
@@ -1643,13 +1716,13 @@ function stockAccuracy(){
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
-const secondaryScreens = ['kerugian','opname','restock','notif','laporan','arsip','retur','riwayat','logaktivitas','bantuan'];
+const secondaryScreens = ['kerugian','opname','restock','notif','laporan','arsip','retur','riwayat','logaktivitas','bantuan','kejadian'];
 const screenLabel = {
   dashboard:'Asisten Pintar Warung', barang:'Master Barang', pos:'Jual Barang',
   belanja:'Belanja Barang', kerugian:'Catat Kerugian', opname:'Stock Opname',
   restock:'Jagoan Warung', notif:'Notifikasi', laporan:'Laporan & Export',
   arsip:'Arsip Barang', retur:'Retur dari Customer', riwayat:'Riwayat Transaksi',
-  logaktivitas:'Log Aktivitas', bantuan:'Pusat Bantuan',
+  logaktivitas:'Log Aktivitas', bantuan:'Pusat Bantuan', kejadian:'Catat Kejadian',
 };
 
 function goScreen(s){
@@ -1681,6 +1754,7 @@ function goScreen(s){
     riwayat: initRiwayat,
     logaktivitas: initLogAktivitas,
     bantuan: ()=>{},
+    kejadian: initKejadian,
   };
   if(renders[s]) renders[s]();
 }
@@ -3716,8 +3790,189 @@ async function resetOnboarding(){
 }
 
 // ═══════════════════════════════════════
-// PUSAT BANTUAN
+// CATAT KEJADIAN (Kerugian + Retur unified)
 // ═══════════════════════════════════════
+let _kejadianJenis2='Barang Rusak';
+
+function initKejadian(){
+  // Populate dropdowns
+  const sel=document.getElementById('kerugianBarang2');
+  const sel2=document.getElementById('returBarang2');
+  if(sel) sel.innerHTML='<option value="">-- Pilih barang --</option>'+S.barang.map(b=>`<option value="${b.id}">${b.nama} (stok: ${stok(b)})</option>`).join('');
+  if(sel2) sel2.innerHTML='<option value="">-- Pilih barang --</option>'+S.barang.map(b=>`<option value="${b.id}">${b.nama}</option>`).join('');
+  loadKerugianRiwayat2();
+  loadReturRiwayat2();
+}
+
+function switchKejadian(tab,el){
+  document.querySelectorAll('#kejadianTabs .tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panelKerugian').style.display=tab==='kerugian'?'':'none';
+  document.getElementById('panelRetur').style.display=tab==='retur'?'':'none';
+}
+
+function pilihJenis2(el,jenis){
+  _kejadianJenis2=jenis;
+  document.querySelectorAll('#jenisTags2 .tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function previewKerugian2(){
+  const id=document.getElementById('kerugianBarang2').value;
+  const qty=+document.getElementById('kerugianQty2').value||0;
+  const pv=document.getElementById('kerugianPreview2');
+  if(!id||!qty){pv.style.display='none';return;}
+  const b=S.barang.find(x=>x.id===id);
+  if(!b||qty>stok(b)){pv.style.display='none';return;}
+  const nilai=fifoHpp(b,qty);
+  pv.style.display='block';
+  pv.textContent=`Nilai kerugian: Rp ${nilai.toLocaleString('id-ID')} · Stok sisa: ${stok(b)-qty} pcs`;
+}
+
+async function prosesKerugian2(){
+  const id=document.getElementById('kerugianBarang2').value;
+  const qty=+document.getElementById('kerugianQty2').value;
+  const note=document.getElementById('kerugianNote2').value.trim();
+  if(!id||!qty){showToast('Pilih barang dan isi jumlah');return;}
+  const b=S.barang.find(x=>x.id===id);
+  if(!b||qty>stok(b)){showToast('Qty melebihi stok tersedia');return;}
+  const nilai=fifoHpp(b,qty);
+  const {error}=await sb.from('losses').insert({warung_id:S.warungId,barang_id:b.id,jenis:_kejadianJenis2,qty,nilai,note:note||null});
+  if(error){showToast('Gagal simpan: '+error.message);return;}
+  await fifoDeductDB(b,qty);
+  S.lossesToday.push({nilai,ts:Date.now()});
+  logActivity('kerugian',`${_kejadianJenis2}: ${b.nama} ${qty} pcs`,nilai);
+  ['kerugianBarang2','kerugianQty2','kerugianNote2'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  document.getElementById('kerugianPreview2').style.display='none';
+  loadKerugianRiwayat2(); renderDashboard();
+  showToast('Kerugian dicatat: '+fmtRp(nilai));
+}
+
+async function loadKerugianRiwayat2(){
+  const {data}=await sb.from('losses').select('*,barang(nama)').eq('warung_id',S.warungId).order('created_at',{ascending:false}).limit(5);
+  const r=document.getElementById('kerugianRiwayat2');
+  if(!r) return;
+  if(!data?.length){r.innerHTML='<div class="empty" style="padding:12px"><i class="ti ti-history"></i>Belum ada catatan</div>';return;}
+  r.innerHTML=data.map(l=>`<div class="ledger-item">
+    <div class="ledger-icon" style="background:var(--red-bg)"><i class="ti ti-alert-triangle" style="color:var(--red)"></i></div>
+    <div class="list-info"><div class="list-title">${l.barang?.nama||'-'}</div><div class="list-sub">${l.jenis} · ${l.qty} pcs</div></div>
+    <div style="font-size:12px;font-weight:600;color:var(--red)">-${fmtRp(Number(l.nilai))}</div>
+  </div>`).join('');
+}
+
+function previewRetur2(){
+  const id=document.getElementById('returBarang2').value;
+  const qty=+document.getElementById('returQty2').value||0;
+  const harga=+document.getElementById('returHarga2').value||0;
+  const pv=document.getElementById('returPreview2');
+  if(!id||!qty||!harga){pv.style.display='none';return;}
+  pv.style.display='block';
+  pv.textContent=`Refund pendapatan: ${fmtRp(qty*harga)} · Stok +${qty} pcs`;
+}
+
+async function prosesRetur2(){
+  const id=document.getElementById('returBarang2').value;
+  const qty=+document.getElementById('returQty2').value;
+  const harga=+document.getElementById('returHarga2').value||0;
+  const note=document.getElementById('returNote2').value.trim();
+  if(!id||!qty){showToast('Pilih barang dan isi jumlah');return;}
+  const b=S.barang.find(x=>x.id===id);if(!b)return;
+  const hpp=avgHpp(b)||0;
+  const {error}=await sb.from('customer_returns').insert({warung_id:S.warungId,barang_id:b.id,qty,harga_jual:harga||b.hargaJual,hpp,note:note||null});
+  if(error){showToast('Gagal simpan: '+error.message);return;}
+  const {data:bt}=await sb.from('batches').insert({barang_id:b.id,qty,harga_beli:hpp}).select().single();
+  if(bt) b.batches.push({id:bt.id,qty,hargaBeli:hpp,ts:new Date(bt.created_at).getTime()});
+  logActivity('retur',`Retur customer: ${b.nama} ${qty} pcs`,qty*(harga||b.hargaJual));
+  ['returBarang2','returQty2','returHarga2','returNote2'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  document.getElementById('returPreview2').style.display='none';
+  loadReturRiwayat2(); renderDashboard();
+  showToast('Retur dicatat! Stok +'+qty+' pcs ✓');
+}
+
+async function loadReturRiwayat2(){
+  const {data}=await sb.from('customer_returns').select('*,barang(nama)').eq('warung_id',S.warungId).order('created_at',{ascending:false}).limit(5);
+  const r=document.getElementById('returRiwayat2');
+  if(!r) return;
+  if(!data?.length){r.innerHTML='<div class="empty" style="padding:12px"><i class="ti ti-history"></i>Belum ada retur</div>';return;}
+  r.innerHTML=data.map(d=>`<div class="ledger-item">
+    <div class="ledger-icon pos"><i class="ti ti-arrow-back-up"></i></div>
+    <div class="list-info"><div class="list-title">${d.barang?.nama||'-'}</div><div class="list-sub">${d.qty} pcs${d.note?' · '+d.note:''}</div></div>
+    <div style="font-size:12px;color:var(--text2)">${fmtRp(d.qty*Number(d.harga_jual))}</div>
+  </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// EVENT PREPARATION
+// ═══════════════════════════════════════
+const EVENT_CONFIG = {
+  ramadan:  { label:'Ramadan', durasi:30, icon:'🌙', multiplier:{ Minuman:1.8, Makanan:1.5, 'Kebutuhan Rumah':1.3, Rokok:1.1 }},
+  lebaran:  { label:'Lebaran', durasi:7,  icon:'🎊', multiplier:{ Minuman:2.5, Makanan:2.0, 'Kebutuhan Rumah':1.8, Rokok:1.2 }},
+  agustus:  { label:'17 Agustus', durasi:3, icon:'🇮🇩', multiplier:{ Minuman:1.5, Makanan:1.4, 'Kebutuhan Rumah':1.1, Rokok:1.1 }},
+  nataru:   { label:'Natal & Tahun Baru', durasi:7, icon:'🎄', multiplier:{ Minuman:2.0, Makanan:1.6, 'Kebutuhan Rumah':1.4, Rokok:1.2 }},
+  custom:   { label:'Custom', durasi:7,  icon:'📅', multiplier:{ Minuman:1.5, Makanan:1.5, 'Kebutuhan Rumah':1.2, Rokok:1.1 }},
+};
+let _selectedEvent=null;
+
+function pilihEvent(key,el){
+  document.querySelectorAll('#eventTags .tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  _selectedEvent=key;
+  const customInput=document.getElementById('eventCustomInput');
+  customInput.style.display=key==='custom'?'block':'none';
+  hitungEventPrep(key);
+}
+
+function hitungEventPrep(key){
+  const cfg=EVENT_CONFIG[key];
+  const durasi=key==='custom'?(+document.getElementById('eventDurasi')?.value||7):cfg.durasi;
+  const result=document.getElementById('eventResult');
+  if(!S.barang.length){result.innerHTML='<div class="empty"><i class="ti ti-package"></i>Tambah barang dulu</div>';return;}
+
+  const recs=[];
+  let totalModal=0;
+
+  S.barang.forEach(b=>{
+    const avgHarian=b.soldHistory.length
+      ? b.soldHistory.reduce((s,h)=>s+h.qty,0)/30
+      : 0;
+    const multiplier=cfg.multiplier[b.kategori]||1.3;
+    const kebutuhan=Math.ceil(avgHarian*durasi*multiplier);
+    const stokSaat=stok(b);
+    const perluBeli=Math.max(0,kebutuhan-stokSaat);
+    if(perluBeli>0){
+      const hpp=avgHpp(b)||0;
+      const modal=perluBeli*hpp;
+      totalModal+=modal;
+      recs.push({nama:b.nama,kategori:b.kategori,stok:stokSaat,kebutuhan,perluBeli,hpp,modal});
+    }
+  });
+
+  recs.sort((a,c)=>c.modal-a.modal);
+
+  if(!recs.length){
+    result.innerHTML=`<div style="background:var(--green-bg);border-radius:var(--r8);padding:12px;font-size:13px;color:var(--green);text-align:center">
+      ✅ Stok sudah cukup untuk ${cfg.icon} ${cfg.label} (${durasi} hari)
+    </div>`;
+    return;
+  }
+
+  result.innerHTML=`
+    <div style="background:var(--amber-bg);border-radius:var(--r8);padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:600;color:var(--amber)">📋 ${cfg.icon} Persiapan ${cfg.label} (${durasi} hari)</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:4px">${recs.length} barang perlu distok · Estimasi modal: ${fmtRp(totalModal)}</div>
+    </div>
+    ${recs.map(r=>`
+      <div class="list-item">
+        <div class="list-info">
+          <div class="list-title" style="font-size:13px">${r.nama}</div>
+          <div class="list-sub">${r.kategori} · Stok: ${r.stok} · Butuh: ${r.kebutuhan} pcs</div>
+        </div>
+        <div class="list-right">
+          <div style="font-weight:700;color:var(--amber)">+${r.perluBeli} pcs</div>
+          <div style="font-size:11px;color:var(--text2)">${fmtRp(r.modal)}</div>
+        </div>
+      </div>`).join('')}`;
+}
 function toggleAcc(header){
   const item=header.closest('.acc-item');
   const isOpen=item.classList.contains('open');
