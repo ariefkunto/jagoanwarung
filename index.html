@@ -501,12 +501,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- ══════════════ MASTER BARANG ══════════════ -->
 <div class="screen" id="screen-barang">
   <div class="content">
-    <div class="search-box">
-      <i class="ti ti-search"></i>
-      <input type="text" placeholder="Cari barang..." id="searchBarang" oninput="renderBarang()">
+
+    <!-- TOMBOL AKSI (ATAS) -->
+    <div style="display:flex;gap:8px">
+      <button class="btn primary" style="flex:1" onclick="openAddBarang()"><i class="ti ti-plus"></i>Tambah Barang</button>
+      <button class="btn" style="flex:1" onclick="openBulkInput()"><i class="ti ti-table-import"></i>Bulk Input</button>
     </div>
 
-    <!-- LEGEND: status badge -->
+    <!-- SUMMARY SKU PER KATEGORI -->
+    <div class="card" style="padding:10px 14px" id="barangSummary"></div>
+
+    <!-- SEARCH + FILTER KATEGORI -->
+    <div class="search-box">
+      <i class="ti ti-search"></i>
+      <input type="text" placeholder="Cari nama barang..." id="searchBarang" oninput="_filterHabis=false;renderBarang()">
+    </div>
+    <div style="overflow-x:auto;padding-bottom:4px">
+      <div class="tag-row" id="kategoriFilter" style="flex-wrap:nowrap;min-width:max-content">
+        <div class="tag active" onclick="filterKategori('',this)">Semua</div>
+        <div class="tag" onclick="filterKategori('Makanan',this)">🍜 Makanan</div>
+        <div class="tag" onclick="filterKategori('Minuman',this)">🥤 Minuman</div>
+        <div class="tag" onclick="filterKategori('Rokok',this)">🚬 Rokok</div>
+        <div class="tag" onclick="filterKategori('Kebutuhan Rumah',this)">🏠 Rumah</div>
+        <div class="tag" onclick="filterKategori('Lainnya',this)">📦 Lainnya</div>
+      </div>
+    </div>
+
+    <!-- LIST BARANG -->
+    <div id="barangList"></div>
+
+    <!-- LEGEND STATUS -->
     <div class="card" style="padding:10px 14px">
       <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Arti status stok</div>
       <div class="legend-line">
@@ -519,13 +543,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <span style="color:var(--text3)">·</span>
         <span class="badge r xs">Habis</span><span>Stok 0 pcs</span>
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">Estimasi hari stok habis berdasarkan rata-rata penjualan</div>
-    </div>
-
-    <div id="barangList"></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn primary" style="flex:1" onclick="openAddBarang()"><i class="ti ti-plus"></i>Tambah Barang</button>
-      <button class="btn" style="flex:1" onclick="openBulkInput()"><i class="ti ti-table-import"></i>Bulk Input</button>
     </div>
   </div>
 </div>
@@ -2134,14 +2151,92 @@ async function loadAbcAnalysis(){
 // ═══════════════════════════════════════
 // MASTER BARANG
 // ═══════════════════════════════════════
+let _activeKategori='';
+
+function filterKategori(kat,el){
+  _activeKategori=kat;
+  document.querySelectorAll('#kategoriFilter .tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderBarang();
+}
+
+function renderBarangSummary(){
+  const el=document.getElementById('barangSummary');
+  if(!el||!S.barang.length){if(el)el.style.display='none';return;}
+  el.style.display='block';
+
+  const cats=['Makanan','Minuman','Rokok','Kebutuhan Rumah','Lainnya'];
+  const counts={};
+  const nilaiTotal={};
+  S.barang.forEach(b=>{
+    const cat=cats.includes(b.kategori)?b.kategori:'Lainnya';
+    counts[cat]=(counts[cat]||0)+1;
+    nilaiTotal[cat]=(nilaiTotal[cat]||0)+stok(b)*avgHpp(b);
+  });
+
+  const total=S.barang.length;
+  const nilaiAll=S.barang.reduce((s,b)=>s+stok(b)*avgHpp(b),0);
+  const habis=S.barang.filter(b=>stok(b)===0).length;
+
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+      <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Ringkasan Stok</span>
+      <span style="font-size:12px;color:var(--text2)">${total} SKU · Nilai <b style="color:var(--text)">${fmtRp(nilaiAll)}</b></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+      ${cats.filter(c=>counts[c]).map(c=>`
+        <div style="background:var(--bg2);border-radius:var(--r8);padding:7px 8px;cursor:pointer" onclick="filterKategoriByName('${c}')">
+          <div style="font-size:18px;line-height:1">${catEmoji(c)}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-top:2px">${counts[c]} SKU</div>
+          <div style="font-size:10px;color:var(--text2)">${c}</div>
+        </div>`).join('')}
+      ${habis?`<div style="background:var(--red-bg);border-radius:var(--r8);padding:7px 8px;cursor:pointer" onclick="filterKategoriByStatus('habis')">
+        <div style="font-size:18px;line-height:1">⚠️</div>
+        <div style="font-size:12px;font-weight:600;color:var(--red);margin-top:2px">${habis} SKU</div>
+        <div style="font-size:10px;color:var(--red)">Stok Habis</div>
+      </div>`:''}
+    </div>`;
+}
+
+function catEmoji(kat){
+  const map={'Makanan':'🍜','Minuman':'🥤','Rokok':'🚬','Kebutuhan Rumah':'🏠','Lainnya':'📦'};
+  return map[kat]||'📦';
+}
+
+function filterKategoriByName(kat){
+  _activeKategori=kat;
+  document.querySelectorAll('#kategoriFilter .tag').forEach((t,i)=>{
+    const cats=['','Makanan','Minuman','Rokok','Kebutuhan Rumah','Lainnya'];
+    t.classList.toggle('active',cats[i]===kat);
+  });
+  renderBarang();
+  // scroll ke list
+  document.getElementById('barangList')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+let _filterHabis=false;
+function filterKategoriByStatus(status){
+  _filterHabis=status==='habis';
+  _activeKategori='';
+  document.querySelectorAll('#kategoriFilter .tag').forEach((t,i)=>t.classList.toggle('active',i===0));
+  renderBarang();
+}
+
 function renderBarang(){
-  const q = (document.getElementById('searchBarang')?.value||'').toLowerCase();
-  const filtered = S.barang.filter(b=>b.nama.toLowerCase().includes(q));
+  renderBarangSummary();
+  const q=(document.getElementById('searchBarang')?.value||'').toLowerCase();
+  let filtered=S.barang.filter(b=>{
+    const matchQ=!q||b.nama.toLowerCase().includes(q);
+    const matchKat=!_activeKategori||b.kategori===_activeKategori;
+    const matchHabis=!_filterHabis||stok(b)===0;
+    return matchQ&&matchKat&&matchHabis;
+  });
+  if(_filterHabis) filtered=filtered.filter(b=>stok(b)===0);
   const list = document.getElementById('barangList');
   if(!filtered.length){
     list.innerHTML = S.barang.length===0
-      ? '<div class="empty"><i class="ti ti-package"></i>Belum ada barang. Tambah barang pertama lo!</div>'
-      : '<div class="empty"><i class="ti ti-package"></i>Barang tidak ditemukan</div>';
+      ? '<div class="empty"><i class="ti ti-package"></i>Belum ada barang. Tambah barang pertama Anda!</div>'
+      : `<div class="empty"><i class="ti ti-package"></i>${_activeKategori?'Tidak ada barang kategori '+_activeKategori:_filterHabis?'Semua barang masih ada stok 🎉':'Barang tidak ditemukan'}</div>`;
     return;
   }
   list.innerHTML = '<div class="card" style="padding:8px 14px">'+filtered.map(b=>{
