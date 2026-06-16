@@ -270,6 +270,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{font-size:32px;animation:spin 1s linear infinite}
 
+/* ACCORDION */
+.acc-item{border-bottom:1px solid var(--border)}
+.acc-item:last-child{border-bottom:none}
+.acc-header{display:flex;align-items:center;justify-content:space-between;padding:13px 4px;cursor:pointer;gap:10px}
+.acc-icon{font-size:18px;flex-shrink:0;width:32px;height:32px;border-radius:var(--r8);display:flex;align-items:center;justify-content:center}
+.acc-title{font-size:14px;font-weight:600;flex:1;color:var(--text)}
+.acc-chevron{font-size:16px;color:var(--text3);transition:transform .2s;flex-shrink:0}
+.acc-item.open .acc-chevron{transform:rotate(180deg)}
+.acc-body{display:none;padding:0 4px 14px;font-size:13px;color:var(--text2);line-height:1.7}
+.acc-item.open .acc-body{display:block}
+.acc-body ol,.acc-body ul{padding-left:18px;margin-top:4px}
+.acc-body li{margin-bottom:4px}
+.acc-body b{color:var(--text)}
+.acc-tip{background:var(--green-bg);border-radius:var(--r8);padding:8px 12px;margin-top:8px;font-size:12px;color:var(--green)}
+.acc-warn{background:var(--amber-bg);border-radius:var(--r8);padding:8px 12px;margin-top:8px;font-size:12px;color:var(--amber)}
+
 /* ── DESKTOP LAYOUT ── */
 @media(min-width:768px){
   body{background:var(--bg2)}
@@ -740,6 +756,316 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- ══════════════ PUSAT BANTUAN ══════════════ -->
+<div class="screen" id="screen-bantuan">
+  <div class="content">
+
+    <!-- SEARCH -->
+    <div class="card" style="padding:10px 14px">
+      <input type="text" id="bantuanSearch" placeholder="🔍  Cari topik bantuan..." autocomplete="off"
+        oninput="filterBantuan(this.value)"
+        style="width:100%;background:none;border:none;outline:none;font-size:14px;color:var(--text)">
+    </div>
+
+    <!-- PANDUAN PER MENU -->
+    <div class="card" style="padding:4px 14px" id="bantuanMenus">
+
+      <div class="acc-item" data-tags="dashboard home penjualan profit periode filter">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--green-bg)"><i class="ti ti-home" style="color:var(--green)"></i></div>
+          <span class="acc-title">Home — Dashboard</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Dashboard menampilkan <b>ringkasan kinerja warung</b> untuk periode yang Anda pilih.
+          <ol>
+            <li>Pilih periode di bagian atas: <b>Hari ini, Minggu ini, Bulan ini,</b> atau <b>Custom</b></li>
+            <li>4 kartu stat akan otomatis update: Total Penjualan, Keuntungan, Barang Mau Habis, HPP Kerugian</li>
+            <li>Riwayat transaksi periode tersebut tampil di bawah</li>
+          </ol>
+          <div class="acc-tip">💡 Keuntungan = Omzet − HPP − Kerugian Inventory. Ini profit bersih yang paling akurat.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="barang sku produk tambah edit arsip koreksi bulk harga modal">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--blue-bg)"><i class="ti ti-package" style="color:var(--blue)"></i></div>
+          <span class="acc-title">Barang — Master Produk</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Tempat mengelola semua produk yang dijual di warung Anda.
+          <ol>
+            <li><b>Tambah Barang</b> — ketik nama, pilih dari 162 saran SKU pasaran, isi harga jual & min stok</li>
+            <li><b>Bulk Input</b> — tambah banyak barang sekaligus dalam 1 tabel</li>
+            <li><b>Edit</b> — tap barang → tap Edit untuk ubah nama/harga</li>
+            <li><b>Koreksi Stok</b> — tap barang → tap Koreksi untuk set stok ke angka yang benar</li>
+            <li><b>Arsip</b> — barang tidak dijual lagi bisa diarsipkan, data history tetap aman</li>
+          </ol>
+          <div class="acc-tip">💡 <b>Harga Modal</b> yang tampil adalah rata-rata HPP FIFO dari semua batch yang masuk. Otomatis terhitung.</div>
+          <div class="acc-warn">⚠️ Hapus barang = arsip (bukan hapus permanen). Data transaksi lama tetap tersimpan.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="jual kasir pos transaksi bayar qris cash void batal suspend tahan">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--amber-bg)"><i class="ti ti-shopping-cart" style="color:var(--amber)"></i></div>
+          <span class="acc-title">Jual — Kasir POS</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Layar kasir untuk mencatat penjualan ke pelanggan.
+          <ol>
+            <li>Ketik nama barang di kotak pencarian → tap untuk tambah ke keranjang</li>
+            <li>Ubah qty langsung di input angka atau tap − / +</li>
+            <li>Pilih metode bayar: <b>Cash, QRIS, Transfer,</b> atau <b>Lainnya</b></li>
+            <li>Tap <b>Proses Transaksi</b> → cek konfirmasi → tap <b>Ya, Proses</b></li>
+          </ol>
+          <b>Fitur tambahan:</b>
+          <ul>
+            <li><b>Tahan</b> — simpan keranjang sementara, layani pelanggan lain dulu</li>
+            <li><b>Tertahan</b> — ambil kembali keranjang yang ditahan</li>
+            <li>Tap transaksi di <b>Terjual Hari Ini</b> → lihat detail item + tombol Batalkan</li>
+          </ul>
+          <div class="acc-warn">⚠️ Void/Batal transaksi hanya bisa dilakukan di <b>hari yang sama</b>. Transaksi kemarin tidak bisa dibatalkan dari aplikasi.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="belanja barang masuk stok beli supplier bonus fifo batch">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--green-bg)"><i class="ti ti-truck" style="color:var(--green)"></i></div>
+          <span class="acc-title">Belanja — Barang Masuk</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Catat setiap pembelian barang dari supplier. Stok otomatis bertambah.
+          <ol>
+            <li>Pilih barang yang dibeli</li>
+            <li>Isi <b>Jumlah (pcs)</b> dan <b>Harga Beli per pcs</b></li>
+            <li>Isi supplier (opsional) dan bonus pcs jika ada</li>
+            <li>Tap <b>Catat Barang Masuk</b></li>
+          </ol>
+          <div class="acc-tip">💡 Sistem FIFO: harga beli yang pertama masuk akan digunakan pertama untuk menghitung HPP saat barang terjual. Setiap pembelian membuat "batch" baru.</div>
+          <div class="acc-tip">💡 Lihat <b>Rekomendasi Belanja</b> di bawah — produk yang DOI-nya &lt; 3 hari perlu segera direstok.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="kerugian rusak expired hilang retur supplier catat">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--red-bg)"><i class="ti ti-alert-triangle" style="color:var(--red)"></i></div>
+          <span class="acc-title">Kerugian Inventory</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Catat barang yang tidak bisa dijual karena rusak, kedaluwarsa, hilang, atau diretur ke supplier.
+          <ol>
+            <li>Pilih jenis kerugian: <b>Barang Rusak, Expired, Hilang,</b> atau <b>Retur Supplier</b></li>
+            <li>Pilih barang dan jumlah</li>
+            <li>Isi catatan (opsional)</li>
+            <li>Tap <b>Catat Kerugian</b></li>
+          </ol>
+          Nilai kerugian dihitung otomatis dari HPP FIFO. Stok langsung berkurang.
+          <div class="acc-warn">⚠️ Pastikan catat kerugian sebelum melakukan Stock Opname agar akurasi lebih tinggi.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="retur customer pelanggan barang kembali refund">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--amber-bg)"><i class="ti ti-arrow-back-up" style="color:var(--amber)"></i></div>
+          <span class="acc-title">Retur dari Customer</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Catat ketika pelanggan mengembalikan barang yang sudah dibeli.
+          <ol>
+            <li>Pilih barang yang dikembalikan</li>
+            <li>Isi jumlah dan harga jual saat transaksi</li>
+            <li>Tambahkan catatan alasan retur</li>
+            <li>Tap <b>Catat Retur</b></li>
+          </ol>
+          Stok otomatis <b>bertambah</b> dan pendapatan <b>dikurangi</b> sesuai harga jual saat itu.
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="opname stock count fisik sistem selisih akurasi koreksi laporan so">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--blue-bg)"><i class="ti ti-clipboard-check" style="color:var(--blue)"></i></div>
+          <span class="acc-title">Stock Opname (SO)</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Hitung stok fisik dan bandingkan dengan data sistem. Selisih akan dikoreksi otomatis.
+          <ol>
+            <li>Hitung fisik stok setiap barang di warung</li>
+            <li>Isi angka fisik di kolom masing-masing barang</li>
+            <li>Kolom selisih otomatis terhitung (merah = kurang, hijau = lebih)</li>
+            <li>Tap <b>Simpan Opname</b></li>
+            <li>Laporan selisih + analisis otomatis muncul</li>
+          </ol>
+          <div class="acc-tip">💡 Tidak perlu isi semua barang — isi hanya yang sudah Anda hitung. Barang yang kosong tidak akan dikoreksi.</div>
+          <div class="acc-tip">💡 Untuk koreksi 1 barang saja: buka <b>Barang</b> → tap barang → tap <b>Koreksi</b>. Lebih cepat dari full SO.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="jagoan warung doi restock alert dead stock abc pareto intelligence">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--green-bg)"><i class="ti ti-shield-check" style="color:var(--green)"></i></div>
+          <span class="acc-title">Jagoan Warung — Intelligence</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Analisis cerdas berbasis data penjualan 30 hari terakhir.
+          <ul>
+            <li><b>DOI (Days of Inventory)</b> — estimasi berapa hari stok akan habis berdasarkan rata-rata penjualan harian. DOI ≤ 2 = kritis, perlu segera restock</li>
+            <li><b>Dead Stock</b> — barang yang tidak terjual dalam 14+ hari. Pertimbangkan turunkan harga atau kurangi order</li>
+            <li><b>Price Spike</b> — harga beli naik signifikan dari batch sebelumnya</li>
+            <li><b>ABC Analysis</b> — Kelas A (80% omzet), B (15%), C (5%). Fokus jaga stok kelas A</li>
+          </ul>
+          <div class="acc-tip">💡 ABC Analysis sinkron dengan filter periode di Home. Ganti ke "Bulan ini" untuk analisis bulanan yang lebih representatif.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="laporan export excel pdf download transaksi stok kerugian abc">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--blue-bg)"><i class="ti ti-file-spreadsheet" style="color:var(--blue)"></i></div>
+          <span class="acc-title">Laporan & Export</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Download laporan lengkap dalam format Excel atau PDF.
+          <ol>
+            <li>Pilih periode laporan (Hari ini / Minggu / Bulan / Custom)</li>
+            <li>Preview laporan muncul otomatis</li>
+            <li>Tap <b>Download Excel</b> untuk file 6 sheet:<br>
+              Detail Transaksi · Ringkasan Penjualan · Stok · Kerugian · ABC Analysis · Log Aktivitas</li>
+            <li>Tap <b>Download PDF</b> untuk ringkasan 1 halaman</li>
+          </ol>
+          <div class="acc-tip">💡 Excel cocok untuk analisis lebih lanjut atau kirim ke akuntan. PDF cocok untuk arsip atau kirim ke pemilik warung.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="log aktivitas audit trail rekap semua aksi history">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-icon" style="background:var(--red-bg)"><i class="ti ti-activity" style="color:var(--red)"></i></div>
+          <span class="acc-title">Log Aktivitas</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Rekap semua aktivitas yang terjadi di warung — siapa melakukan apa dan kapan.
+          <ul>
+            <li>13 tipe aktivitas terekam: Penjualan, Belanja, Tambah/Edit Barang, Opname, Kerugian, Retur, Void, Suspend, Export</li>
+            <li>Filter per periode: Hari ini / Minggu / Bulan / Custom</li>
+            <li>Export ke Excel untuk keperluan audit</li>
+          </ul>
+          <div class="acc-tip">💡 Gunakan Log Aktivitas + SO untuk investigasi selisih stok: lihat semua aktivitas belanja dan koreksi di periode tertentu.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FAQ -->
+    <div class="card" style="padding:4px 14px" id="bantuanFAQ">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:12px 4px 4px">FAQ</div>
+
+      <div class="acc-item" data-tags="fifo harga modal hpp perhitungan">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-title">Apa itu FIFO dan kenapa penting?</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          <b>FIFO = First In, First Out.</b> Barang yang lebih dulu masuk (dibeli lebih awal) akan dihitung lebih dulu saat terjual.
+          <br><br>
+          Contoh: Anda beli Indomie 50 pcs di harga Rp 2.500, lalu beli lagi 50 pcs di harga Rp 2.700. Saat menjual 10 pcs, HPP yang dihitung = Rp 2.500 (dari batch pertama yang lebih dulu masuk).
+          <br><br>
+          Ini standar akuntansi yang paling akurat untuk warung karena mencerminkan biaya nyata dari barang yang dijual.
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="stok salah koreksi belanja input error">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-title">Salah input jumlah belanja, bagaimana koreksinya?</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Ada 2 cara:
+          <ol>
+            <li><b>Koreksi Stok Cepat</b> — buka Barang → tap barang → tap <b>Koreksi</b> → isi stok yang benar. Ini cara tercepat untuk 1 barang.</li>
+            <li><b>Stock Opname</b> — hitung semua fisik dan isi di halaman SO. Cocok untuk koreksi banyak barang sekaligus.</li>
+          </ol>
+          <div class="acc-warn">⚠️ Belanja yang sudah diinput tidak bisa dihapus dari UI — hanya bisa dikoreksi lewat Koreksi Stok atau SO.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="void batal transaksi salah kasir">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-title">Bagaimana cara membatalkan transaksi?</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          <ol>
+            <li>Buka menu <b>Jual</b></li>
+            <li>Scroll ke bawah ke bagian <b>Terjual Hari Ini</b></li>
+            <li>Tap transaksi yang ingin dibatalkan</li>
+            <li>Tap <b>Batalkan Transaksi</b> (merah)</li>
+            <li>Konfirmasi → stok semua barang otomatis dikembalikan</li>
+          </ol>
+          <div class="acc-warn">⚠️ Void hanya bisa dilakukan di hari yang sama. Setelah tengah malam, transaksi tidak bisa dibatalkan dari aplikasi.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="trial langganan bayar extend akses habis">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-title">Trial saya hampir habis, bagaimana cara perpanjang?</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Jagoan Warung memberikan <b>trial gratis 90 hari</b> penuh semua fitur.
+          <br><br>
+          Setelah trial habis, langganan <b>Rp 99.000/bulan</b> untuk tetap menggunakan semua fitur.
+          <br><br>
+          Untuk perpanjang, hubungi kami melalui <b>karyawansakti.com</b> — kami akan aktifkan akses Anda setelah pembayaran dikonfirmasi.
+          <div class="acc-tip">💡 Data warung Anda tetap aman meskipun akses habis. Begitu perpanjang, semua data langsung bisa diakses kembali.</div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="data hilang aman cloud backup">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-title">Apakah data warung saya aman jika ganti HP?</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          <b>Ya, 100% aman.</b> Semua data tersimpan di cloud (server Supabase), bukan di memori HP.
+          <br><br>
+          Ganti HP, install ulang browser, atau buka dari HP lain → login dengan Gmail yang sama → semua data langsung muncul kembali.
+        </div>
+      </div>
+
+      <div class="acc-item" data-tags="multi kasir karyawan">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-title">Bisa dipakai lebih dari 1 karyawan/kasir?</span>
+          <i class="ti ti-chevron-down acc-chevron"></i>
+        </div>
+        <div class="acc-body">
+          Saat ini Jagoan Warung menggunakan <b>1 akun per warung</b>. Kasir bisa login menggunakan Gmail yang sama di HP yang berbeda.
+          <br><br>
+          Fitur <b>multi-kasir dengan role berbeda</b> (kasir tidak bisa lihat profit) sedang dalam roadmap pengembangan.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- KONTAK -->
+    <div class="card" style="padding:16px 14px;text-align:center">
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px">Butuh bantuan lebih lanjut?</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Tim Jagoan Warung siap membantu Anda</div>
+      <a href="https://karyawansakti.com" target="_blank" style="text-decoration:none">
+        <button class="btn primary"><i class="ti ti-world"></i>karyawansakti.com</button>
+      </a>
+    </div>
+
+  </div>
+</div>
+
 <!-- ══════════════ LOG AKTIVITAS ══════════════ -->
 <div class="screen" id="screen-logaktivitas">
   <div class="content">
@@ -868,6 +1194,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="modal">
     <i class="ti ti-x modal-close" onclick="closeOverlay('moreMenu')"></i>
     <div class="modal-title">Menu Lainnya</div>
+    <button class="btn" onclick="closeOverlay('moreMenu');goScreen('bantuan')"><i class="ti ti-help-circle"></i>Pusat Bantuan</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('logaktivitas')"><i class="ti ti-activity"></i>Log Aktivitas</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('kerugian')"><i class="ti ti-alert-triangle"></i>Catat Kerugian Inventory</button>
     <button class="btn" onclick="closeOverlay('moreMenu');goScreen('retur')"><i class="ti ti-arrow-back-up"></i>Retur dari Customer</button>
@@ -1316,13 +1643,13 @@ function stockAccuracy(){
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
-const secondaryScreens = ['kerugian','opname','restock','notif','laporan','arsip','retur','riwayat','logaktivitas'];
+const secondaryScreens = ['kerugian','opname','restock','notif','laporan','arsip','retur','riwayat','logaktivitas','bantuan'];
 const screenLabel = {
   dashboard:'Asisten Pintar Warung', barang:'Master Barang', pos:'Jual Barang',
   belanja:'Belanja Barang', kerugian:'Catat Kerugian', opname:'Stock Opname',
   restock:'Jagoan Warung', notif:'Notifikasi', laporan:'Laporan & Export',
   arsip:'Arsip Barang', retur:'Retur dari Customer', riwayat:'Riwayat Transaksi',
-  logaktivitas:'Log Aktivitas',
+  logaktivitas:'Log Aktivitas', bantuan:'Pusat Bantuan',
 };
 
 function goScreen(s){
@@ -1353,6 +1680,7 @@ function goScreen(s){
     retur: initRetur,
     riwayat: initRiwayat,
     logaktivitas: initLogAktivitas,
+    bantuan: ()=>{},
   };
   if(renders[s]) renders[s]();
 }
@@ -3385,6 +3713,37 @@ async function resetOnboarding(){
   if(!confirm('Ulangi setup warung dari awal?')) return;
   await sb.from('warungs').update({onboarding_done:false}).eq('id',S.warungId);
   showOnboarding();
+}
+
+// ═══════════════════════════════════════
+// PUSAT BANTUAN
+// ═══════════════════════════════════════
+function toggleAcc(header){
+  const item=header.closest('.acc-item');
+  const isOpen=item.classList.contains('open');
+  // Tutup semua yang lain di container yang sama
+  item.parentElement.querySelectorAll('.acc-item.open').forEach(i=>i.classList.remove('open'));
+  if(!isOpen) item.classList.add('open');
+}
+
+function filterBantuan(q){
+  const ql=q.toLowerCase().trim();
+  const allItems=document.querySelectorAll('#screen-bantuan .acc-item');
+  allItems.forEach(item=>{
+    const tags=item.dataset.tags||'';
+    const title=item.querySelector('.acc-title')?.textContent||'';
+    const body=item.querySelector('.acc-body')?.textContent||'';
+    const match=!ql||tags.includes(ql)||title.toLowerCase().includes(ql)||body.toLowerCase().includes(ql);
+    item.style.display=match?'':'none';
+    if(match&&ql) item.classList.add('open'); // auto-buka saat search
+  });
+  // Sembunyikan card kalau semua isinya tersembunyi
+  ['bantuanMenus','bantuanFAQ'].forEach(id=>{
+    const card=document.getElementById(id);
+    if(!card) return;
+    const visible=Array.from(card.querySelectorAll('.acc-item')).some(i=>i.style.display!=='none');
+    card.style.display=visible?'':'none';
+  });
 }
 
 // ═══════════════════════════════════════
