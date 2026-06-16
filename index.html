@@ -268,6 +268,45 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #loadingOverlay.hidden{opacity:0;pointer-events:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{font-size:32px;animation:spin 1s linear infinite}
+
+/* ── DESKTOP LAYOUT ── */
+@media(min-width:768px){
+  body{background:var(--bg2)}
+  .app{max-width:1100px;flex-direction:row;min-height:100vh;margin:0 auto;box-shadow:0 0 40px rgba(0,0,0,.1)}
+  .nav-bar{
+    position:sticky;top:0;left:0;
+    width:190px;min-height:100vh;
+    flex-direction:column;
+    display:flex!important;
+    grid-template-columns:none;
+    border-top:none;border-right:1px solid var(--border);
+    padding:16px 8px;
+    transform:none;
+    gap:2px;
+    align-self:flex-start;
+  }
+  .nav-bar::before{
+    content:'🏪 Jagoan Warung';
+    display:block;font-size:13px;font-weight:700;color:var(--brand);
+    padding:4px 8px 12px;border-bottom:1px solid var(--border);
+    width:100%;margin-bottom:6px;
+  }
+  .nav-item{
+    width:100%;flex-direction:row;gap:10px;
+    padding:10px 12px;border-radius:var(--r8);
+    font-size:13px;justify-content:flex-start;
+    color:var(--text2);
+  }
+  .nav-item i{font-size:17px}
+  .nav-item.active{background:var(--green-bg);color:var(--brand)}
+  .topbar{display:none}
+  .screen{height:100vh;overflow-y:auto;flex:1}
+  .content{padding:20px;padding-bottom:24px}
+  .welcome{padding:20px 20px 8px;flex-direction:row;align-items:center;justify-content:space-between}
+  .stat-grid{grid-template-columns:repeat(4,1fr)}
+  .overlay{align-items:center;padding:20px}
+  .modal{border-radius:var(--r16);max-width:520px;padding:24px}
+}
 </style>
 </head>
 <body>
@@ -467,7 +506,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
 
     <div id="barangList"></div>
-    <button class="btn primary" onclick="openAddBarang()"><i class="ti ti-plus"></i>Tambah Barang Baru</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn primary" style="flex:1" onclick="openAddBarang()"><i class="ti ti-plus"></i>Tambah Barang</button>
+      <button class="btn" style="flex:1" onclick="openBulkInput()"><i class="ti ti-table-import"></i>Bulk Input</button>
+    </div>
   </div>
 </div>
 
@@ -835,6 +877,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="inp-group"><label>Nama warung</label><input type="text" id="wNamaWarung" placeholder="Warung Saya"></div>
     <div style="font-size:12px;color:var(--text2)">Login sebagai: <span id="wEmail" style="font-weight:600;color:var(--text)"></span></div>
     <button class="btn primary" onclick="saveWarungName()"><i class="ti ti-check"></i>Simpan</button>
+    <div class="divider"></div>
+    <button class="btn" onclick="closeOverlay('modalWarung');resetOnboarding()"><i class="ti ti-settings"></i>Ulangi Setup Warung</button>
     <button class="btn danger" onclick="logout()"><i class="ti ti-logout"></i>Keluar</button>
   </div>
 </div>
@@ -867,6 +911,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn" onclick="closeOverlay('modalVoid')">Kembali</button>
   </div>
 </div>
+<!-- Bulk Input Barang -->
+<div class="overlay" id="modalBulk">
+  <div class="modal" style="max-height:92vh">
+    <i class="ti ti-x modal-close" onclick="closeOverlay('modalBulk')"></i>
+    <div class="modal-title">Bulk Input Barang</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Ketik nama → pilih dari saran → isi harga jual minimal. Simpan semua sekaligus.</div>
+    <div id="bulkRows" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto"></div>
+    <button class="btn" onclick="addBulkRow()" style="margin-top:4px"><i class="ti ti-plus"></i>Tambah Baris</button>
+    <button class="btn primary" onclick="saveBulkInput()"><i class="ti ti-device-floppy"></i>Simpan Semua</button>
+  </div>
+</div>
+
 <div class="overlay" id="modalBarang">
   <div class="modal">
     <i class="ti ti-x modal-close" onclick="closeOverlay('modalBarang')"></i>
@@ -1402,8 +1458,9 @@ async function loadPeriodData(){
   const fromISO=from.toISOString(), toISO=to.toISOString();
 
   const {data:txData,error:te}=await sb.from('transactions')
-    .select('total, hpp, payment_method, created_at, transaction_items(qty)')
+    .select('id, total, hpp, payment_method, created_at, transaction_items(qty)')
     .eq('warung_id',S.warungId)
+    .eq('voided',false)
     .gte('created_at',fromISO).lte('created_at',toISO)
     .order('created_at',{ascending:false});
   if(te){ showToast('Gagal load transaksi: '+te.message,4000); return; }
@@ -1412,8 +1469,8 @@ async function loadPeriodData(){
     total:Number(t.total),hpp:Number(t.hpp),payment:t.payment_method,
     ts:new Date(t.created_at).getTime(),
     items:(t.transaction_items||[]).reduce((s,it)=>s+it.qty,0),
-    voided:t.voided||false
-  })).filter(t=>!t.voided);
+    voided:false
+  }));
 
   const {data:lossData,error:le}=await sb.from('losses')
     .select('nilai, created_at')
@@ -1783,7 +1840,13 @@ function prosesJual(){
     <div class="info-row"><span class="info-label">Profit transaksi ini</span><span style="font-weight:700;color:var(--brand)">${fmtRp(totalSell-totalHpp)}</span></div>`;
   openOverlay('modalKonfirmasi');
 }
+let _isProcessingJual=false;
 async function konfirmasiJual(){
+  if(_isProcessingJual) return; // Double-tap guard
+  _isProcessingJual=true;
+  const confirmBtn=document.querySelector('#modalKonfirmasi .btn.primary');
+  if(confirmBtn){ confirmBtn.disabled=true; confirmBtn.innerHTML='<i class="ti ti-loader-2"></i>Memproses...'; }
+
   const totalSell=S.cart.reduce((s,c)=>{const b=S.barang.find(x=>x.id===c.id);return s+(b?b.hargaJual*c.qty:0);},0);
   const totalHpp=S.cart.reduce((s,c)=>{const b=S.barang.find(x=>x.id===c.id);return s+(b?fifoHpp(b,c.qty):0);},0);
   const items=S.cart.reduce((s,c)=>s+c.qty,0);
@@ -1792,7 +1855,12 @@ async function konfirmasiJual(){
   const {data:tx,error}=await sb.from('transactions').insert({
     warung_id:S.warungId, total:totalSell, hpp:totalHpp, payment_method:payment
   }).select().single();
-  if(error){showToast('Gagal simpan transaksi: '+error.message);return;}
+  if(error){
+    showToast('Gagal simpan transaksi: '+error.message);
+    _isProcessingJual=false;
+    if(confirmBtn){ confirmBtn.disabled=false; confirmBtn.innerHTML='<i class="ti ti-check"></i>Ya, Proses Sekarang'; }
+    return;
+  }
 
   const txItems=S.cart.map(c=>{
     const b=S.barang.find(x=>x.id===c.id);
@@ -1815,6 +1883,7 @@ async function konfirmasiJual(){
   S.paymentMethod='Cash';
   document.querySelectorAll('#paymentTags .tag').forEach((t,i)=>t.classList.toggle('active',i===0));
   closeOverlay('modalKonfirmasi');
+  _isProcessingJual=false;
   renderCart(); renderDashboard(); renderPosToday();
   showToast('Transaksi berhasil ('+payment+')! Profit '+fmtRp(totalSell-totalHpp));
 }
@@ -2875,6 +2944,113 @@ async function loadLogAktivitas(){
       </div>`:''}
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════
+// BULK INPUT BARANG
+// ═══════════════════════════════════════
+let _bulkRowId=0;
+
+function openBulkInput(){
+  _bulkRowId=0;
+  document.getElementById('bulkRows').innerHTML='';
+  addBulkRow(); addBulkRow(); addBulkRow(); // start with 3 rows
+  openOverlay('modalBulk');
+}
+
+function addBulkRow(){
+  const id=++_bulkRowId;
+  const row=document.createElement('div');
+  row.id='bulkrow_'+id;
+  row.style.cssText='background:var(--bg2);border-radius:var(--r8);padding:10px;display:flex;flex-direction:column;gap:6px;position:relative';
+  row.innerHTML=`
+    <div style="display:flex;gap:6px;align-items:flex-start">
+      <div class="inp-group" style="flex:1;position:relative">
+        <label>Nama barang</label>
+        <input type="text" id="bname_${id}" placeholder="Ketik nama..." autocomplete="off"
+          oninput="bulkSkuSearch(${id},this.value)" onfocus="bulkSkuSearch(${id},this.value)">
+        <div id="bulkdd_${id}" class="sku-dropdown" style="display:none;z-index:300"></div>
+      </div>
+      <button onclick="removeBulkRow(${id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;margin-top:18px;padding:2px">✕</button>
+    </div>
+    <div style="display:flex;gap:6px">
+      <div class="inp-group" style="flex:1"><label>Kategori</label>
+        <select id="bkat_${id}">
+          <option>Makanan</option><option>Minuman</option><option>Rokok</option><option>Kebutuhan Rumah</option><option>Lainnya</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <div class="inp-group" style="flex:1"><label>Harga Jual (Rp)*</label><input type="number" id="bjual_${id}" placeholder="0" min="0"></div>
+      <div class="inp-group" style="flex:1"><label>Min. Stok</label><input type="number" id="bmin_${id}" placeholder="10" min="0"></div>
+    </div>`;
+  document.getElementById('bulkRows').appendChild(row);
+  // Close dropdown when clicking outside
+  document.getElementById('bname_'+id).addEventListener('blur',()=>{
+    setTimeout(()=>{ const dd=document.getElementById('bulkdd_'+id); if(dd) dd.style.display='none'; },200);
+  });
+}
+
+function removeBulkRow(id){
+  const row=document.getElementById('bulkrow_'+id);
+  if(row) row.remove();
+}
+
+function bulkSkuSearch(id,q){
+  const dd=document.getElementById('bulkdd_'+id);
+  if(!dd) return;
+  if(!q||q.length<2){dd.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const results=SKU_DB.filter(s=>s.nama.toLowerCase().includes(ql)).slice(0,6);
+  if(!results.length){dd.style.display='none';return;}
+  dd.innerHTML=results.map(s=>
+    `<div class="sku-item" onmousedown="bulkSkuPick(${id},'${s.nama.replace(/'/g,"\\'")}','${s.kat}')">
+      <span>${s.nama}</span><span class="sku-item-kat">${s.kat}</span>
+    </div>`).join('');
+  dd.style.display='block';
+}
+
+function bulkSkuPick(id,nama,kat){
+  const el=document.getElementById('bname_'+id);
+  const katEl=document.getElementById('bkat_'+id);
+  if(el) el.value=nama;
+  if(katEl) katEl.value=kat;
+  const dd=document.getElementById('bulkdd_'+id);
+  if(dd) dd.style.display='none';
+  document.getElementById('bjual_'+id)?.focus();
+}
+
+async function saveBulkInput(){
+  const rows=document.querySelectorAll('[id^="bulkrow_"]');
+  const toSave=[];
+  rows.forEach(row=>{
+    const id=row.id.replace('bulkrow_','');
+    const nama=document.getElementById('bname_'+id)?.value.trim();
+    const kategori=document.getElementById('bkat_'+id)?.value||'Lainnya';
+    const hargaJual=+document.getElementById('bjual_'+id)?.value||0;
+    const minStok=+document.getElementById('bmin_'+id)?.value||10;
+    if(nama&&hargaJual>0) toSave.push({nama,kategori,harga_jual:hargaJual,min_stok:minStok,lead_time:1,warung_id:S.warungId,archived:false});
+  });
+  if(!toSave.length){showToast('Isi minimal 1 barang dengan nama dan harga jual');return;}
+  const btn=document.querySelector('#modalBulk .btn.primary');
+  if(btn){ btn.disabled=true; btn.textContent='Menyimpan...'; }
+  const {data,error}=await sb.from('barang').insert(toSave).select();
+  if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i>Simpan Semua'; }
+  if(error){showToast('Gagal simpan: '+error.message);return;}
+  (data||[]).forEach(b=>{
+    S.barang.push({id:b.id,nama:b.nama,kategori:b.kategori,hargaJual:Number(b.harga_jual),minStok:b.min_stok,leadTime:b.lead_time,batches:[],soldHistory:[]});
+    logActivity('barang_baru',`Barang baru (bulk): ${b.nama}`,null,b.id);
+  });
+  closeOverlay('modalBulk');
+  renderBarang();
+  showToast(`${data.length} barang berhasil ditambahkan ✓`);
+}
+
+// ── Reset Onboarding ──
+async function resetOnboarding(){
+  if(!confirm('Ulangi setup warung dari awal?')) return;
+  await sb.from('warungs').update({onboarding_done:false}).eq('id',S.warungId);
+  showOnboarding();
 }
 
 // ═══════════════════════════════════════
