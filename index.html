@@ -2,9 +2,11 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Asisten Pintar Warung</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jagoan Warung</title>
+<meta name="description" content="Aplikasi kasir warung dengan FIFO, ABC Analysis, dan rekomendasi restock otomatis.">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -838,20 +840,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 </div><!-- /app -->
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" async></script>
 <script>
 // ═══════════════════════════════════════
 // SUPABASE CONFIG
-// Ambil dari: Supabase Dashboard > Project Settings > API
+// ═══════════════════════════════════════
+// SUPABASE CONFIG
 // ═══════════════════════════════════════
 const SUPABASE_URL = 'https://cmjyngxiiivopyztfgbh.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_5ycCCY65Nhphoe8_ELmqiw_1Gv6LD6z';
-const sb = (SUPABASE_URL.includes('GANTI') || SUPABASE_ANON_KEY.includes('GANTI'))
-  ? null
-  : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const CONFIG_VALID = !SUPABASE_URL.includes('GANTI') && !SUPABASE_ANON_KEY.includes('GANTI');
+
+// sb dibuat setelah Supabase library loaded (karena script async)
+let sb = null;
+function initSb(){
+  if(sb || !CONFIG_VALID || !window.supabase) return false;
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return true;
+}
 
 // ═══════════════════════════════════════
 // STATE
@@ -2140,10 +2146,36 @@ function periodStr(){
   return fmtDateShort(from)+(LS.period==='today'?'':' s.d. '+fmtDateShort(to));
 }
 
+// ── LAZY LOAD LIBRARIES (hanya load saat dibutuhkan) ──
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const s=document.createElement('script');
+    s.src=src; s.onload=res; s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+async function loadXLSX(){
+  await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+}
+async function loadJsPDF(){
+  if(!window.jspdf?.jsPDF && !window.jsPDF){
+    await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+  }
+}
+// Juga pastiin Supabase sudah ready sebelum dipakai
+function waitForSupabase(){
+  return new Promise(res=>{
+    if(window.supabase){res();return;}
+    const t=setInterval(()=>{if(window.supabase){clearInterval(t);res();}},50);
+  });
+}
+
 async function exportExcel(){
   if(!LS.data){showToast('Muat data dulu');return;}
-  if(typeof XLSX==='undefined'){showToast('Library Excel belum siap, coba lagi');return;}
-  showToast('Menyiapkan Excel...',3000);
+  showToast('Menyiapkan Excel...',4000);
+  try{ await loadXLSX(); } catch(e){ showToast('Gagal load library Excel');return; }
+  if(typeof XLSX==='undefined'){showToast('Library Excel gagal dimuat');return;}
   const {txData,lossData,stokData,abcItems}=LS.data;
   const wb=XLSX.utils.book_new();
 
@@ -2184,16 +2216,12 @@ async function exportExcel(){
 
 async function exportPDF(){
   if(!LS.data){showToast('Muat data dulu');return;}
-
+  showToast('Menyiapkan PDF...',4000);
+  try{ await loadJsPDF(); } catch(e){ showToast('Gagal load library PDF');return; }
   let jsPDFClass;
   if(window.jspdf?.jsPDF) jsPDFClass=window.jspdf.jsPDF;
   else if(window.jsPDF) jsPDFClass=window.jsPDF;
-  else {
-    showToast('jsPDF tidak ditemukan: '+JSON.stringify(Object.keys(window).filter(k=>k.toLowerCase().includes('pdf'))),6000);
-    return;
-  }
-
-  showToast('Menyiapkan PDF...',3000);
+  else { showToast('Library PDF gagal dimuat',4000); return; }
   try {
     const doc=new jsPDFClass({unit:'mm',format:'a4'});
   const {txData,lossData,stokData,abcItems}=LS.data;
@@ -2958,17 +2986,22 @@ document.addEventListener('click',e=>{
   if(dd && !dd.contains(e.target) && e.target.id!=='mNama') dd.style.display='none';
 });
 
-if(!sb){
-  hideLoading();
-  document.getElementById('loginScreen').innerHTML = `
-    <div style="color:var(--red);font-size:13px;max-width:280px;line-height:1.7;text-align:left">
-      <b>⚠️ Setup belum lengkap</b><br><br>
-      Edit 2 baris di paling atas &lt;script&gt;:<br>
-      <code style="word-break:break-all">SUPABASE_URL</code> dan <code>SUPABASE_ANON_KEY</code><br><br>
-      Ambil dari: Supabase Dashboard → Project Settings → API
-    </div>`;
-  showLogin();
-} else {
+// Tunggu Supabase library ready (karena async), lalu init
+waitForSupabase().then(()=>{
+  initSb();
+  if(!sb || !CONFIG_VALID){
+    hideLoading();
+    document.getElementById('loginScreen').innerHTML = `
+      <div style="color:var(--red);font-size:13px;max-width:280px;line-height:1.7;text-align:left">
+        <b>⚠️ Setup belum lengkap</b><br><br>
+        Edit 2 baris di paling atas &lt;script&gt;:<br>
+        <code style="word-break:break-all">SUPABASE_URL</code> dan <code>SUPABASE_ANON_KEY</code><br><br>
+        Ambil dari: Supabase Dashboard → Project Settings → API
+      </div>`;
+    showLogin();
+    return;
+  }
+
   const hash=window.location.hash;
   const search=window.location.search;
   const isOAuthCallback=
@@ -2979,7 +3012,6 @@ if(!sb){
 
   showLoading(isOAuthCallback?'Memproses login Google...':'Memuat...');
 
-  // Fallback timeout kalau OAuth callback tapi SIGNED_IN ga datang
   let oauthTimeout=null;
   if(isOAuthCallback){
     oauthTimeout=setTimeout(()=>{
@@ -3006,7 +3038,7 @@ if(!sb){
       hideLoading(); showLogin();
     }
   });
-}
+});
 </script>
 </body>
 </html>
