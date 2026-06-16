@@ -443,7 +443,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat">
         <div class="stat-label">Barang mau habis</div>
         <div class="stat-val a" id="dHabis">0 SKU</div>
-        <div class="stat-sub">DOI ≤ 2 hari</div>
+        <div class="stat-sub">Tahan ≤ 2 hari</div>
       </div>
       <div class="stat">
         <div class="stat-label">HPP Kerugian</div>
@@ -510,16 +510,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="card" style="padding:10px 14px">
       <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Arti status stok</div>
       <div class="legend-line">
-        <span class="badge g xs">Aman</span><span>DOI &gt; 7 hari</span>
+        <span class="badge g xs">Aman</span><span>Tahan &gt; 7 hari</span>
         <span style="color:var(--text3)">·</span>
-        <span class="badge b xs">Pantau</span><span>DOI 3–7 hari</span>
+        <span class="badge b xs">Pantau</span><span>Tahan 3–7 hari</span>
       </div>
       <div class="legend-line">
-        <span class="badge a xs">Kritis</span><span>DOI ≤ 2 hari</span>
+        <span class="badge a xs">Kritis</span><span>Tahan ≤ 2 hari</span>
         <span style="color:var(--text3)">·</span>
         <span class="badge r xs">Habis</span><span>Stok 0 pcs</span>
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">DOI = stok ÷ rata-rata penjualan harian</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">Estimasi hari stok habis berdasarkan rata-rata penjualan</div>
     </div>
 
     <div id="barangList"></div>
@@ -746,13 +746,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <span style="color:#fff;font-weight:700;font-size:14px">Jagoan Warung</span>
       </div>
       <div style="color:rgba(255,255,255,.85);font-size:12px;line-height:1.6">
-        DOI = stok tersisa ÷ rata-rata jual harian.<br>
+        Estimasi berapa hari stok akan habis berdasarkan rata-rata penjualan harian.<br>
         <b style="color:#fff">≤ 2 hari</b> = Kritis &nbsp;|&nbsp; <b style="color:#fff">≤ lead time+1</b> = Segera beli &nbsp;|&nbsp; <b style="color:#fff">&gt; 7</b> = Aman
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">Semua SKU — urut DOI terendah</div>
+      <div class="card-title">Semua SKU — urut yang paling cepat habis</div>
       <div id="restockFull"><div class="empty"><i class="ti ti-check"></i>Belum ada barang</div></div>
     </div>
 
@@ -907,7 +907,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
             <li>Tap <b>Catat Barang Masuk</b></li>
           </ol>
           <div class="acc-tip">💡 Sistem FIFO: harga beli yang pertama masuk akan digunakan pertama untuk menghitung HPP saat barang terjual. Setiap pembelian membuat "batch" baru.</div>
-          <div class="acc-tip">💡 Lihat <b>Rekomendasi Belanja</b> di bawah — produk yang DOI-nya &lt; 3 hari perlu segera direstok.</div>
+          <div class="acc-tip">💡 Lihat <b>Rekomendasi Belanja</b> di bawah — produk yang estimasi habisnya &lt; 3 hari perlu segera direstok.</div>
         </div>
       </div>
 
@@ -968,7 +968,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
       </div>
 
-      <div class="acc-item" data-tags="jagoan warung doi restock alert dead stock abc pareto intelligence">
+      <div class="acc-item" data-tags="jagoan warung tahan habis restock alert stok abc pareto intelligence">
         <div class="acc-header" onclick="toggleAcc(this)">
           <div class="acc-icon" style="background:var(--green-bg)"><i class="ti ti-shield-check" style="color:var(--green)"></i></div>
           <span class="acc-title">Jagoan Warung — Intelligence</span>
@@ -977,8 +977,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="acc-body">
           Analisis cerdas berbasis data penjualan 30 hari terakhir.
           <ul>
-            <li><b>DOI (Days of Inventory)</b> — estimasi berapa hari stok akan habis berdasarkan rata-rata penjualan harian. DOI ≤ 2 = kritis, perlu segera restock</li>
-            <li><b>Dead Stock</b> — barang yang tidak terjual dalam 14+ hari. Pertimbangkan turunkan harga atau kurangi order</li>
+            <li><b>Tahan X Hari</b> — estimasi berapa hari stok akan habis berdasarkan rata-rata penjualan harian. Tahan ≤ 2 = kritis, perlu segera restock</li>
+            <li><b>Stok Mandek</b> — barang yang tidak terjual dalam 14+ hari. Pertimbangkan turunkan harga atau kurangi order</li>
             <li><b>Price Spike</b> — harga beli naik signifikan dari batch sebelumnya</li>
             <li><b>ABC Analysis</b> — Kelas A (80% omzet), B (15%), C (5%). Fokus jaga stok kelas A</li>
           </ul>
@@ -1787,7 +1787,7 @@ function renderDashboard(){
   S.barang.forEach(b=>{
     const d=doi(b), s=stok(b);
     if(s===0) alerts.push({icon:'ti-alert-circle',col:'var(--red)',text:b.nama+' sudah habis!',sub:'Segera hubungi supplier untuk restock'});
-    else if(d<=2) alerts.push({icon:'ti-clock',col:'var(--amber)',text:b.nama+' habis dalam ≤'+Math.ceil(d)+' hari',sub:'DOI: '+d.toFixed(1)+' hari · Segera restock'});
+    else if(d<=2) alerts.push({icon:'ti-clock',col:'var(--amber)',text:b.nama+' habis dalam ≤'+Math.ceil(d)+' hari',sub:'Tahan '+d.toFixed(1)+' hari · Segera restock'});
   });
   S.barang.forEach(b=>{
     if(!stok(b)) return;
@@ -1825,7 +1825,7 @@ function renderDashboard(){
         return `<div class="alert-item">
           <i class="ti ti-shopping-cart alert-icon" style="color:var(--blue)"></i>
           <div><div class="alert-text">${b.nama}</div>
-          <div class="alert-sub">Beli ${rec} pcs · DOI: ${doi(b)>=999?'—':doi(b).toFixed(1)+' hari'}</div></div>
+          <div class="alert-sub">Beli ${rec} pcs · Tahan: ${doi(b)>=999?'—':doi(b).toFixed(1)+' hari'}</div></div>
         </div>`;
       }).join('')
     : '<div class="empty" style="padding:12px"><i class="ti ti-check"></i>Tidak ada rekomendasi</div>';
@@ -2073,7 +2073,7 @@ function openDetail(id){
   const b = S.barang.find(x=>x.id===id); if(!b) return;
   const s=stok(b), d=doi(b), hpp=avgHpp(b);
   const margin = hpp ? Math.round((b.hargaJual-hpp)/b.hargaJual*100) : '-';
-  const doiLabel = d>=999 ? '— (belum ada data jual)' : d.toFixed(1)+' hari';
+  const doiLabel = d>=999 ? '— (belum ada data jual)' : 'Tahan '+d.toFixed(1)+' hari';
   const doiStatus = d<=2?'<span class="badge r">Kritis</span>':d<=7?'<span class="badge a">Pantau</span>':'<span class="badge g">Aman</span>';
   document.getElementById('modalDetailContent').innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
@@ -2087,7 +2087,7 @@ function openDetail(id){
     <div class="info-row"><span class="info-label">Harga Modal (rata-rata)</span><span style="font-weight:700">${fmtRp(hpp)}</span></div>
     <div class="info-row"><span class="info-label">Harga Jual</span><span style="font-weight:700;color:var(--green)">${fmtRp(b.hargaJual)}</span></div>
     <div class="info-row"><span class="info-label">Margin</span><span style="color:var(--green);font-weight:700">${margin}%</span></div>
-    <div class="info-row"><span class="info-label">Days of Inventory</span><span>${doiLabel} ${doiStatus}</span></div>
+    <div class="info-row"><span class="info-label">Estimasi Tahan</span><span>${doiLabel} ${doiStatus}</span></div>
     <div class="info-row"><span class="info-label">Minimum stok</span><span>${b.minStok} pcs</span></div>
     <div class="info-row"><span class="info-label">Lead time</span><span>${b.leadTime} hari</span></div>
     <div class="info-row"><span class="info-label">Batch aktif</span><span>${b.batches.length} batch</span></div>
@@ -2368,7 +2368,7 @@ function renderBelanjaAlert(){
     return `<div class="alert-item">
       <i class="ti ${isCritical?'ti-alert-circle':'ti-clock'} alert-icon" style="color:${isCritical?'var(--red)':'var(--amber)'}"></i>
       <div style="flex:1"><div class="alert-text">${b.nama}</div>
-      <div class="alert-sub">Stok ${s} pcs · DOI ${d>=999?'—':d.toFixed(1)+' hari'}${rec?' · Rekomendasi beli '+rec+' pcs':''}</div></div>
+      <div class="alert-sub">Stok ${s} pcs · Tahan ${d>=999?'—':d.toFixed(1)+' hari'}${rec?' · Rekomendasi beli '+rec+' pcs':''}</div></div>
     </div>`;
   }).join('');
 }
@@ -2764,7 +2764,7 @@ function renderRestock(){
           <div style="font-size:14px;font-weight:500;margin-bottom:2px">${b.nama}</div>
           <div style="font-size:11px;color:var(--text2)">
             Stok: <b>${s} pcs</b> &nbsp;·&nbsp;
-            DOI: <b>${d>=999?'—':d.toFixed(1)+' hr'}</b> &nbsp;·&nbsp;
+            Tahan: <b>${d>=999?'—':d.toFixed(1)+' hr'}</b> &nbsp;·&nbsp;
             Jual/hr: <b>${spd?spd.toFixed(1):'—'}</b>
           </div>
           <div class="doi-bar"><div class="doi-fill" style="width:${Math.round(pct)}%;background:${fillColor}"></div></div>
@@ -2786,7 +2786,7 @@ function renderNotif(){
   S.barang.forEach(b=>{
     const d=doi(b), s=stok(b);
     if(s===0) alerts.push({icon:'ti-alert-circle',col:'var(--red)',text:b.nama+' sudah habis!',sub:'Segera hubungi supplier'});
-    else if(d<=2) alerts.push({icon:'ti-clock',col:'var(--amber)',text:b.nama+' habis dalam '+Math.ceil(d)+' hari',sub:'DOI: '+d.toFixed(1)+' hari'});
+    else if(d<=2) alerts.push({icon:'ti-clock',col:'var(--amber)',text:b.nama+' habis dalam '+Math.ceil(d)+' hari',sub:'Tahan '+d.toFixed(1)+' hari'});
   });
   S.barang.forEach(b=>{
     if(b.batches.length<2) return;
