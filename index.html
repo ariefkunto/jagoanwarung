@@ -2535,37 +2535,45 @@ async function konfirmasiJual(){
   const confirmBtn=document.querySelector('#modalKonfirmasi .btn.primary');
   if(confirmBtn){ confirmBtn.disabled=true; confirmBtn.innerHTML='<i class="ti ti-loader-2"></i>Memproses...'; }
 
-  const totalSell=S.cart.reduce((s,c)=>{const b=S.barang.find(x=>x.id===c.id);return s+(b?b.hargaJual*c.qty:0);},0);
-  const totalHpp=S.cart.reduce((s,c)=>{const b=S.barang.find(x=>x.id===c.id);return s+(b?fifoHpp(b,c.qty):0);},0);
-  const items=S.cart.reduce((s,c)=>s+c.qty,0);
   const payment=S.paymentMethod;
+  const items=S.cart.reduce((s,c)=>s+c.qty,0);
+  const itemsPayload=S.cart.map(c=>({barang_id:c.id, qty:c.qty}));
 
-  const {data:tx,error}=await sb.from('transactions').insert({
-    warung_id:S.warungId, total:totalSell, hpp:totalHpp, payment_method:payment
-  }).select().single();
+  // FASE 2: satu panggilan RPC — server yang hitung FIFO/HPP/profit & potong
+  // stok secara atomic (rollback otomatis kalau ada item gagal di tengah).
+  const {data,error}=await sb.rpc('proses_jual',{
+    p_warung_id:S.warungId,
+    p_payment_method:payment,
+    p_items:itemsPayload
+  });
   if(error){
-    showToast('Gagal simpan transaksi: '+error.message);
+    showToast('Gagal proses transaksi: '+error.message);
     _isProcessingJual=false;
     if(confirmBtn){ confirmBtn.disabled=false; confirmBtn.innerHTML='<i class="ti ti-check"></i>Ya, Proses Sekarang'; }
     return;
   }
 
-  const txItems=S.cart.map(c=>{
-    const b=S.barang.find(x=>x.id===c.id);
-    return {transaction_id:tx.id, barang_id:b.id, qty:c.qty, harga_jual:b.hargaJual, hpp:fifoHpp(b,c.qty)};
-  });
-  const {error:ie}=await sb.from('transaction_items').insert(txItems);
-  if(ie){showToast('Gagal simpan detail transaksi: '+ie.message);return;}
-
+  // Sync stok lokal (batches) buat barang yang baru aja kejual — server udah
+  // motong di DB, client tinggal narik ulang batches barang yang kepengaruh
+  // aja (bukan reload semua data) biar dashboard/POS langsung akurat.
   const ts=Date.now();
+  const affectedIds=S.cart.map(c=>c.id);
+  const {data:freshBarang}=await sb.from('barang').select('id, batches(*)').in('id',affectedIds);
+  (freshBarang||[]).forEach(fb=>{
+    const b=S.barang.find(x=>x.id===fb.id); if(!b) return;
+    b.batches=(fb.batches||[])
+      .map(bt=>({id:bt.id,qty:bt.qty,hargaBeli:Number(bt.harga_beli),ts:new Date(bt.created_at).getTime()}))
+      .sort((x,y)=>x.ts-y.ts);
+  });
   for(const c of S.cart){
     const b=S.barang.find(x=>x.id===c.id); if(!b) continue;
-    await fifoDeductDB(b,c.qty);
     b.soldHistory.push({qty:c.qty,ts});
   }
 
-  S.transactions.unshift({dbId:tx.id,items,total:totalSell,hpp:totalHpp,ts,payment,voided:false});
-  logActivity('jual',`${items} item terjual · ${payment}`,totalSell,tx.id);
+  S.transactions.unshift({dbId:data.transaction_id,items,total:Number(data.total),hpp:Number(data.hpp),ts,payment,voided:false});
+  // Catatan: logActivity('jual',...) TIDAK dipanggil lagi di sini — RPC
+  // proses_jual sudah insert ke activity_log sendiri di server. Manggil
+  // lagi di sini bakal bikin log-nya kedouble.
   S.cart=[];
   // reset payment selector to Cash for next transaction
   S.paymentMethod='Cash';
@@ -2573,7 +2581,7 @@ async function konfirmasiJual(){
   closeOverlay('modalKonfirmasi');
   _isProcessingJual=false;
   renderCart(); renderDashboard(); renderPosToday();
-  showToast('Transaksi berhasil ('+payment+')! Profit '+fmtRp(totalSell-totalHpp));
+  showToast('Transaksi berhasil ('+payment+')! Profit '+fmtRp(Number(data.profit)));
 }
 
 // ═══════════════════════════════════════
